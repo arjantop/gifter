@@ -1,0 +1,21 @@
+{
+    "sessionId": "4aaf5a",
+    "pollDelay": 180,
+    "requestDelay": 3,
+    "maxRetries": 3,
+    "retryDelay": 3,
+    "enter": [
+        {
+            "games": [
+                "Game Title 1",
+                "Game title 2"
+            ]
+        },
+        {
+            "keywords": [
+                "key1",
+                "multi key"
+            ]
+        }
+    ]
+}
