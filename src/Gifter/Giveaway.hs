@@ -6,7 +6,7 @@ module Gifter.Giveaway (
     canEnter,
     getGiveaway,
     enterGiveaway
-)	where
+) where
 
 
 import qualified Data.ByteString.Char8 as SC

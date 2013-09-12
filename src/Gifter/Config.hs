@@ -5,7 +5,7 @@ module Gifter.Config (
     readConfig,
     defaultLocation,
     match
-)	where
+) where
 
 
 import Data.Conduit (($$))

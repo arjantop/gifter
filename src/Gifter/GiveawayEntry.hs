@@ -1,7 +1,7 @@
 module Gifter.GiveawayEntry (
     GiveawayEntry(..),
     getEntries
-)	where
+) where
 
 import Gifter.GiveawayEntry.Internal
 

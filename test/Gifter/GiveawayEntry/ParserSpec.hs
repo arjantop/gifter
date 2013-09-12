@@ -2,7 +2,7 @@
 module Gifter.GiveawayEntry.ParserSpec (
     main,
     spec
-)	where
+) where
 
 import Test.Hspec
 
@@ -21,16 +21,19 @@ rssEntries = [
         GiveawayEntry {
             url = "http://www.steamgifts.com/giveaway/niIHw/primordia",
             gameTitle = "Primordia",
+            copies = 1,
             points = 10
         },
         GiveawayEntry {
             url = "http://www.steamgifts.com/giveaway/Nq3zH/fortix",
             gameTitle = "Fortix",
+            copies = 5,
             points = 1
         },
         GiveawayEntry {
             url = "http://www.steamgifts.com/giveaway/VLQTR/crysis-2-maximum-edition",
             gameTitle = "Crysis 2 - Maximum Edition",
+            copies = 1,
             points = 30
         }
     ]

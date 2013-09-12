@@ -2,7 +2,7 @@
 module Gifter.Config.EntryCondition (
     EntryCondition(..),
     match
-)	where
+) where
 
 import Data.Aeson
 import Data.List

@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes, OverloadedStrings #-}
 module Gifter.Giveaway.Parser (
     parse
-)	where
+) where
 
 import Text.XML.Cursor
 import Text.XML.Scraping (innerHtml)

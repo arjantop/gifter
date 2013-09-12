@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards,RankNTypes #-}
 module Main (
     main
-)	where
+) where
 
 import Control.Concurrent
 import Control.Concurrent.Async

@@ -1,11 +1,12 @@
 module Gifter.GiveawayEntry.Internal (
     GiveawayEntry(..)
-)	where
+) where
 
 
 data GiveawayEntry =
         GiveawayEntry {
             url :: String,
             gameTitle :: String,
+            copies :: Integer,
             points :: Int
         } deriving (Show, Eq)

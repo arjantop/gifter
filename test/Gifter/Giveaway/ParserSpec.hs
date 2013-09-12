@@ -2,7 +2,7 @@
 module Gifter.Giveaway.ParserSpec (
     main,
     spec
-)	where
+) where
 
 import Test.Hspec
 
