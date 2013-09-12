@@ -1,6 +1,7 @@
 {-# LANGUAGE QuasiQuotes, OverloadedStrings #-}
 module Gifter.Giveaway.Parser (
-    parse
+    parse,
+    DataError(..)
 ) where
 
 import Control.Monad
@@ -14,6 +15,7 @@ import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import Data.Text.Lazy (toStrict)
 import Data.Text.Encoding (encodeUtf8)
+import Data.Maybe (fromMaybe)
 
 import Safe
 
@@ -21,8 +23,24 @@ import Control.Applicative
 
 import Gifter.Giveaway.Internal
 
-parse :: Url -> Cursor -> Maybe Giveaway
-parse u c = Giveaway <$>
+data DataError = GiveawayRemoved
+               | DataParseError
+               deriving (Show, Eq)
+
+parse :: Url -> Cursor -> Either DataError Giveaway
+parse u c = case parseGiveaway u c of
+                Nothing
+                    | checkIfRemoved -> Left GiveawayRemoved
+                    | otherwise      -> Left DataParseError
+                Just g -> Right g
+  where
+    checkIfRemoved =
+        let t = parseData [jq| div.notification |] c
+            isRemoved = (`T.isInfixOf` "has beed removed") `fmap` t
+        in fromMaybe False isRemoved
+
+parseGiveaway :: Url -> Cursor -> Maybe Giveaway
+parseGiveaway u c = Giveaway <$>
             pure u <*>
             parseStatus c <*>
             parseEntries c `mplus` Just 0 <*>

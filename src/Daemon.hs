@@ -87,10 +87,12 @@ enterSelectedGiveaways gc cfg@Config{..} = do
                 | otherwise  ->
                     let strStatus = show . status $ g
                     in logTime $ "Wrong status " ++ strStatus ++ " for " ++ url
-            Left _ -> do
-                logTime $ "Error getting giveaway info: " ++ url
-                delay retryDelay
-                enterOne (retries - 1) ge
+            Left e
+                | isRemoved e -> logTime $ "Giveaway removed: " ++ url
+                | otherwise -> do
+                    logTime $ "Error getting giveaway info: " ++ url
+                    delay retryDelay
+                    enterOne (retries - 1) ge
     enterAndCheck 0 Giveaway{..} =
         logTime $ "No retries left. Unknown status for " ++ url
     enterAndCheck retries g@Giveaway{..} = do

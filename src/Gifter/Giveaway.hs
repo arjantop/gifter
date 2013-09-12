@@ -4,6 +4,7 @@ module Gifter.Giveaway (
     GiveawayStatus(..),
     GiveawayError(..),
     canEnter,
+    isRemoved,
     getGiveaway,
     enterGiveaway
 ) where
@@ -27,14 +28,18 @@ import Control.Arrow
 
 import Gifter.Config
 import Gifter.Giveaway.Internal
-import Gifter.Giveaway.Parser (parse)
+import Gifter.Giveaway.Parser
 
 data GiveawayError = HttpError CH.HttpException
-                   | ParseError
+                   | ResponseParseError DataError
 
 canEnter :: Giveaway -> Bool
-canEnter Giveaway {status=Open _} = True
-canEnter _ = False
+canEnter Giveaway {status = Open _} = True
+canEnter _                          = False
+
+isRemoved :: GiveawayError -> Bool
+isRemoved (ResponseParseError DataParseError) = True
+isRemoved _                                   = False
 
 getGiveaway :: Url -> Config -> IO (Either GiveawayError Giveaway)
 getGiveaway gurl Config{..} = request gurl "GET" [] sessionId
@@ -65,10 +70,12 @@ request gurl m qs sessionId = do
         let root = fromDocument . parseLBS $ CH.responseBody response
             giveaway = parse gurl root
         return giveaway
-    return . join $ left HttpError . right (toEither ParseError) $ response
+    return . join $ handleLeft . handleRight $ response
   where
-    toEither e Nothing = Left e
-    toEither _ (Just x) = Right x
+    handleLeft = left HttpError
+    handleRight = right (toEither ResponseParseError)
+    toEither ec (Left e) = Left $ ec e
+    toEither _ (Right x) = Right x
 
 sessionCookie :: String -> Cookie
 sessionCookie sid =

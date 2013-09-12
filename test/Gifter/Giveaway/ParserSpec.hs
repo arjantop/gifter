@@ -56,7 +56,7 @@ spec =
                         entries = 236,
                         formKey = Nothing
                     }
-            fmap (parse "cogs/url") loadCogsNoLogin `shouldReturn` Just g
+            fmap (parse "cogs/url") loadCogsNoLogin `shouldReturn` Right g
         it "should parse givaway with AlreadyOwn status and 247 entries" $ do
             let g = Giveaway {
                         url = "ds/url",
@@ -64,7 +64,7 @@ spec =
                         entries = 247,
                         formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
-            fmap (parse "ds/url") loadDeadSpaceAlreadyOwn `shouldReturn` Just g
+            fmap (parse "ds/url") loadDeadSpaceAlreadyOwn `shouldReturn` Right g
         it "should parse givaway with Closed status and 3459 entries" $ do
             let g = Giveaway {
                         url = "dn/url",
@@ -72,7 +72,7 @@ spec =
                         entries = 3459,
                         formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
-            fmap (parse "dn/url") loadDukeNukemOpen `shouldReturn` Just g
+            fmap (parse "dn/url") loadDukeNukemOpen `shouldReturn` Right g
         it "should parse givaway with ContributorsOnly status and 226 entries" $ do
             let g = Giveaway {
                         url = "39s/url",
@@ -80,7 +80,7 @@ spec =
                         entries = 226,
                         formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
-            fmap (parse "39s/url") loadThe39StepsContributosOnly `shouldReturn` Just g
+            fmap (parse "39s/url") loadThe39StepsContributosOnly `shouldReturn` Right g
         it "should parse givaway with Open status and 28 entries" $ do
             let g = Giveaway {
                         url = "ra3",
@@ -88,7 +88,7 @@ spec =
                         entries = 28,
                         formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
-            fmap (parse "ra3") loadRedAlert3Open `shouldReturn` Just g
+            fmap (parse "ra3") loadRedAlert3Open `shouldReturn` Right g
         it "should parse givaway with Entered status and 3034 entries" $ do
             let g = Giveaway {
                         url = "fez",
@@ -96,7 +96,7 @@ spec =
                         entries = 3034,
                         formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
-            fmap (parse "fez") loadFezEntered `shouldReturn` Just g
+            fmap (parse "fez") loadFezEntered `shouldReturn` Right g
         it "should parse givaway with MissingBaseGame status and 284 entries" $ do
             let g = Giveaway {
                         url = "xcom",
@@ -104,7 +104,7 @@ spec =
                         entries = 284,
                         formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
-            fmap (parse "xcom") loadXcomDlcMissingBaseGame `shouldReturn` Just g
+            fmap (parse "xcom") loadXcomDlcMissingBaseGame `shouldReturn` Right g
         it "should parse givaway with ComingSoon status" $ do
             let g = Giveaway {
                         url = "me",
@@ -112,4 +112,4 @@ spec =
                         entries = 0,
                         formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
-            fmap (parse "me") loadMirrorsEdgeComingSoon `shouldReturn` Just g
+            fmap (parse "me") loadMirrorsEdgeComingSoon `shouldReturn` Right g
