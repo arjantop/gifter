@@ -39,6 +39,9 @@ loadRedAlert3Open = loadHtml "test/files/RedAlert3Open.html"
 loadFezEntered :: IO Cursor
 loadFezEntered = loadHtml "test/files/FezEntered.html"
 
+loadMirrorsEdgeComingSoon :: IO Cursor
+loadMirrorsEdgeComingSoon = loadHtml "test/files/MirrorsEdgeComingSoon.html"
+
 loadXcomDlcMissingBaseGame :: IO Cursor
 loadXcomDlcMissingBaseGame =
         loadHtml "test/files/XcomEliteSoldierPackMissingBaseGame.html"
@@ -102,3 +105,11 @@ spec =
                         formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap (parse "xcom") loadXcomDlcMissingBaseGame `shouldReturn` Just g
+        it "should parse givaway with ComingSoon status" $ do
+            let g = Giveaway {
+                        url = "me",
+                        status = ComingSoon,
+                        entries = 0,
+                        formKey = Just "c0235212cf41b36612029de779bf5261"
+                    }
+            fmap (parse "me") loadMirrorsEdgeComingSoon `shouldReturn` Just g

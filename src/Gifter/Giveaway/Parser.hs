@@ -3,6 +3,8 @@ module Gifter.Giveaway.Parser (
     parse
 ) where
 
+import Control.Monad
+
 import Text.XML.Cursor
 import Text.XML.Scraping (innerHtml)
 import Text.XML.Selector.TH
@@ -23,7 +25,7 @@ parse :: Url -> Cursor -> Maybe Giveaway
 parse u c = Giveaway <$>
             pure u <*>
             parseStatus c <*>
-            parseEntries c <*>
+            parseEntries c `mplus` Just 0 <*>
             parseFormKey c
 
 parseData :: [JQSelector] -> Cursor -> Maybe T.Text
