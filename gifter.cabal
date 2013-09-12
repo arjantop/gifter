@@ -12,14 +12,14 @@ author: Arjan Topolovec
 
 maintainer: arjan.top@gmail.com
 
-build-type:          Simple
+build-type: Simple
 
-cabal-version:       >= 1.8
+cabal-version: >= 1.8
 
 executable gifterd
   main-is: Daemon.hs
   hs-source-dirs: src
-  ghc-options: -Wall -fno-warn-unused-do-bind
+  ghc-options: -Wall -fno-warn-unused-do-bind -fwarn-tabs -O2
   build-depends:
     base                >= 4.6,
     xml-conduit         >= 1.1,
@@ -42,8 +42,7 @@ executable gifterd
     async               >= 2.0,
     stm                 >= 2.4,
     old-locale          >= 1.0,
-    aeson               >= 0.6,
-    hspec               >= 1.7
+    aeson               >= 0.6
   
 test-suite spec
   type: exitcode-stdio-1.0
