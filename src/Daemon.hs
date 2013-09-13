@@ -1,12 +1,16 @@
-{-# LANGUAGE RecordWildCards,RankNTypes #-}
+{-# LANGUAGE RecordWildCards, RankNTypes, TemplateHaskell #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Main (
     main
 ) where
 
+import Control.Lens
 import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Concurrent.STM
 import Control.Monad
+import Control.Monad.Reader
+import Control.Monad.State
 
 import System.IO
 import System.Locale
@@ -26,6 +30,21 @@ import Gifter.SteamGames
 
 newtype DataEvent a = NewData [a]
 
+type Url = String
+
+data PollState = PollState {
+        _lastChecked :: Maybe Url,
+        _giveawayChannel :: TChan (DataEvent GiveawayEntry)
+    }
+makeLenses ''PollState
+
+newtype PollM a = PollM {
+        unPollM :: ReaderT Config (StateT PollState IO) a
+    } deriving (Monad, MonadState PollState, MonadReader Config, MonadIO)
+
+runPollM :: Config -> PollState -> PollM a -> IO a
+runPollM cfg ps m = evalStateT (runReaderT (unPollM m) cfg) ps
+
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
@@ -39,22 +58,23 @@ main = do
 tryGetSteamGames :: Config -> IO ()
 tryGetSteamGames cfg = do
     logTime "Trying to get steam game list"
-    loop (maxRetries cfg)
+    loop (cfg^.maxRetries)
   where
     loop 0 = logTime "Error getting steam games list"
     loop n = do
-        sge <- getSteamGames (sessionId cfg)
+        sge <- getSteamGames (cfg^.sessionId)
         case sge of
             Right sg -> startTasks cfg sg
             Left _ -> do
                 logTime "Could not get steam game list. Retrying"
-                delay (requestDelay cfg)
+                delay (cfg^.requestDelay)
                 loop (n - 1)
 
 startTasks :: Config -> SteamGames -> IO ()
 startTasks cfg sg = do
     giveChan <- newTChanIO
-    r1 <- async (pollGiveawayEntries giveChan cfg Nothing)
+    let ps = PollState Nothing giveChan
+    r1 <- async (runPollM cfg ps $ pollGiveawayEntries)
     r2 <- async (enterSelectedGiveaways giveChan cfg sg)
     res <- waitEitherCatchCancel r1 r2
     handleErrors res
@@ -65,47 +85,50 @@ startTasks cfg sg = do
         logTime $ "Enter giveaways thread failed with exception: " ++ show e
     handleErrors _ = logTime "Unexpected return value"
 
-pollGiveawayEntries :: TChan (DataEvent GiveawayEntry)
-                    -> Config
-                    -> Maybe GiveawayEntry
-                    -> IO ()
-pollGiveawayEntries gc cfg@Config{..} lg = do
-    gse <- getEntries 999
+pollGiveawayEntries :: PollM ()
+pollGiveawayEntries = do
+    gse <- liftIO $ getEntries 999
     case gse of
         Left e -> do
-            logTime "Error getting latest giveaways"
-            logTime . show $ e
-            delay pollDelay
-            pollGiveawayEntries gc cfg lg
+            cfg <- ask
+            logTimeM "Error getting latest giveaways"
+            logTimeM . show $ e
+            delayM (cfg ^. pollDelay)
+            pollGiveawayEntries
         Right gs -> handleEntries gs
   where
     handleEntries gs = do
-        let newGs = maybe gs (\g -> takeWhile ((/= GE.url g) . GE.url) gs) lg
-        logTime $ "Got " ++ (show . length $ newGs) ++ " new giveaways"
-        atomically $ writeTChan gc (NewData newGs)
-        delay pollDelay
-        pollGiveawayEntries gc cfg (headMay newGs `mplus` lg)
+        cfg <- ask
+        gc <- gets (view giveawayChannel)
+        lg <- gets (view lastChecked)
+        let newGs = maybe gs (\u -> takeWhile ((u /=) . GE.url) gs) lg
+            gUrl = GE.url `fmap` headMay newGs
+        logTimeM $ "Got " ++ (show . length $ newGs) ++ " new giveaways"
+        liftIO $ atomically $ writeTChan gc (NewData newGs)
+        delayM (cfg ^. pollDelay)
+        modify (over lastChecked (gUrl `mplus`))
+        pollGiveawayEntries
 
 
 enterSelectedGiveaways :: TChan (DataEvent GiveawayEntry) -> Config -> SteamGames -> IO ()
 enterSelectedGiveaways gc cfg@Config{..} sg = do
     NewData gs <- atomically $ readTChan gc
     let filteredGs = filter (liftM2 (&&)
-                                (conditionsMatchAny enter)
+                                (conditionsMatchAny $ cfg^.enter)
                                 (not . isAlreadyOwned sg)) gs
     logTime $ "Trying to enter " ++ (show . length $ filteredGs) ++ " giveaways"
     enterAll filteredGs
-    delay pollDelay
+    delay $ cfg^.pollDelay
     enterSelectedGiveaways gc cfg sg
   where
-    enterAll = mapM_ ((>> delay requestDelay) . enterOne maxRetries)
+    enterAll = mapM_ ((>> delay _requestDelay) . enterOne _maxRetries)
     enterOne 0 GiveawayEntry{..} = 
         logTime $ "No retries left. Giving up on " ++ url
     enterOne retries ge@GiveawayEntry{..} = do
         res <- getGiveaway url cfg
         case res of
             Right g
-                | canEnter g -> enterAndCheck maxRetries g
+                | canEnter g -> enterAndCheck _maxRetries g
                 | otherwise  ->
                     let strStatus = show . status $ g
                     in logTime $ "Wrong status " ++ strStatus ++ " for " ++ url
@@ -113,7 +136,7 @@ enterSelectedGiveaways gc cfg@Config{..} sg = do
                 | isRemoved e -> logTime $ "Giveaway removed: " ++ url
                 | otherwise -> do
                     logTime $ "Error getting giveaway info: " ++ url
-                    delay retryDelay
+                    delay _retryDelay
                     enterOne (retries - 1) ge
     enterAndCheck 0 Giveaway{..} =
         logTime $ "No retries left. Unknown status for " ++ url
@@ -123,11 +146,14 @@ enterSelectedGiveaways gc cfg@Config{..} sg = do
             Right True -> logTime $ "Entered giveaway: " ++ url
             _ -> do
                 logTime $ "Error entering giveaway: " ++ url
-                delay retryDelay
+                delay _retryDelay
                 enterAndCheck (retries - 1) g
 
 delay :: Integer -> IO ()
 delay ms = threadDelay (fromIntegral ms * 1000000)
+
+delayM :: (MonadIO m) => Integer -> m ()
+delayM = liftIO . delay
 
 conditionsMatchAny :: [EntryCondition] -> GiveawayEntry -> Bool
 conditionsMatchAny cnd g = any (match g) cnd
@@ -138,3 +164,6 @@ logTime s = do
     let formattedTime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" time
     void $ printf "[%s] %s" formattedTime s
     putStrLn ""
+
+logTimeM :: (MonadIO m) => String -> m ()
+logTimeM = liftIO . logTime

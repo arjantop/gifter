@@ -1,6 +1,12 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
 module Gifter.Config (
     Config(..),
+    sessionId,
+    pollDelay,
+    requestDelay,
+    maxRetries,
+    retryDelay,
+    enter,
     EntryCondition(..),
     ConfigError(..),
     readConfig,
@@ -13,6 +19,7 @@ import Data.Conduit (($$))
 import qualified Data.Conduit.Binary as CB
 import Data.Aeson
 
+import Control.Lens
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans.Resource
@@ -23,13 +30,14 @@ import System.FilePath.Posix
 import Gifter.Config.EntryCondition
 
 data Config = Config {
-        sessionId :: String,
-        pollDelay :: Integer,
-        requestDelay :: Integer,
-        maxRetries :: Integer,
-        retryDelay :: Integer,
-        enter :: [EntryCondition]
+        _sessionId :: String,
+        _pollDelay :: Integer,
+        _requestDelay :: Integer,
+        _maxRetries :: Integer,
+        _retryDelay :: Integer,
+        _enter :: [EntryCondition]
     } deriving (Show, Eq)
+makeLenses ''Config
 
 instance FromJSON Config where
     parseJSON (Object v) = Config <$>

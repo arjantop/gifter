@@ -40,13 +40,13 @@ isRemoved _                                   = False
 
 getGiveaway :: Url -> Config -> IO (Either GiveawayError Giveaway)
 getGiveaway gurl Config{..} =
-    handleResponse $ request gurl "GET" [] sessionId (parseResponse gurl)
+    handleResponse $ request gurl "GET" [] _sessionId (parseResponse gurl)
 
 enterGiveaway :: Giveaway -> Config -> IO (Either GiveawayError Bool)
 enterGiveaway Giveaway{formKey=formKey,url=url} Config{..} = do
     let key = fromMaybe "" formKey
         params = [("enter_giveaway", "1"), ("form_key", key)]
-    r <- handleResponse $ request url "POST" params sessionId (parseResponse url)
+    r <- handleResponse $ request url "POST" params _sessionId (parseResponse url)
     return . right ((==Entered) . status) $ r
 
 parseResponse :: Url -> SL.ByteString -> Either DataError Giveaway
