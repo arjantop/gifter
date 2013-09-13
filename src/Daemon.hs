@@ -45,6 +45,25 @@ newtype PollM a = PollM {
 runPollM :: Config -> PollState -> PollM a -> IO a
 runPollM cfg ps m = evalStateT (runReaderT (unPollM m) cfg) ps
 
+data EnterState = EnterState {
+        _retriesInfo :: Integer,
+        _retriesEnter :: Integer
+    }
+makeLenses ''EnterState
+
+newtype EnterM a = EnterM {
+        unEnterM :: ReaderT Config (StateT EnterState IO) a
+    } deriving (Monad, MonadIO, MonadReader Config, MonadState EnterState)
+
+runEnterM :: Config -> EnterState -> EnterM a -> IO a
+runEnterM cfg es m = evalStateT (runReaderT (unEnterM m) cfg) es
+
+decRetriesInfo :: EnterM ()
+decRetriesInfo = modify (over retriesInfo pred)
+
+decRetriesEnter :: EnterM ()
+decRetriesEnter = modify (over retriesEnter pred)
+
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
@@ -121,33 +140,50 @@ enterSelectedGiveaways gc cfg@Config{..} sg = do
     delay $ cfg^.pollDelay
     enterSelectedGiveaways gc cfg sg
   where
-    enterAll = mapM_ ((>> delay _requestDelay) . enterOne _maxRetries)
-    enterOne 0 GiveawayEntry{..} = 
-        logTime $ "No retries left. Giving up on " ++ url
-    enterOne retries ge@GiveawayEntry{..} = do
-        res <- getGiveaway url cfg
-        case res of
-            Right g
-                | canEnter g -> enterAndCheck _maxRetries g
-                | otherwise  ->
-                    let strStatus = show . status $ g
-                    in logTime $ "Wrong status " ++ strStatus ++ " for " ++ url
-            Left e
-                | isRemoved e -> logTime $ "Giveaway removed: " ++ url
-                | otherwise -> do
-                    logTime $ "Error getting giveaway info: " ++ url
-                    delay _retryDelay
-                    enterOne (retries - 1) ge
-    enterAndCheck 0 Giveaway{..} =
-        logTime $ "No retries left. Unknown status for " ++ url
-    enterAndCheck retries g@Giveaway{..} = do
-        isEntered <- enterGiveaway g cfg
-        case isEntered of
-            Right True -> logTime $ "Entered giveaway: " ++ url
-            _ -> do
-                logTime $ "Error entering giveaway: " ++ url
-                delay _retryDelay
-                enterAndCheck (retries - 1) g
+    enterAll = mapM_ enterOne
+    enterOne g = do
+        let es = EnterState _maxRetries _maxRetries
+        runEnterM cfg es $ tryEnterGiveaway g
+        delay _requestDelay
+
+tryEnterGiveaway :: GiveawayEntry -> EnterM ()
+tryEnterGiveaway gi@GiveawayEntry{url=url} = do
+    cfg <- ask
+    r <- gets (view retriesInfo)
+    case r of
+        0 -> logTimeM $ "No retries left. Giving up on " ++ url
+        _ -> do
+            res <- liftIO $ getGiveaway url cfg
+            either handleFailure handleSuccess $ res
+  where
+    handleSuccess g
+        | canEnter g = enterGiveawayRetry g
+        | otherwise =
+            let strStatus = show . status $ g
+            in logTimeM $ "Wrong status " ++ strStatus ++ " for " ++ url
+    handleFailure e
+        | isRemoved e = logTimeM $ "Removed: " ++ url
+        | otherwise = do
+            logTimeM $ "Error getting info: " ++ url
+            (asks $ view retryDelay) >>= delayM
+            decRetriesInfo
+            tryEnterGiveaway gi
+
+enterGiveawayRetry :: Giveaway -> EnterM ()
+enterGiveawayRetry g@Giveaway{..} = do
+    r <- gets (view retriesEnter)
+    case r of
+        0 -> logTimeM $ "No retries left. Unknown status for " ++ url
+        _ -> do
+            cfg <- ask
+            isEntered <- liftIO $ enterGiveaway g cfg
+            case isEntered of
+                Right True -> logTimeM $ "Entered: " ++ url
+                _ -> do
+                    logTimeM $ "Error entering: " ++ url
+                    delayM (cfg^.retryDelay)
+                    decRetriesEnter
+                    enterGiveawayRetry g
 
 delay :: Integer -> IO ()
 delay ms = threadDelay (fromIntegral ms * 1000000)
