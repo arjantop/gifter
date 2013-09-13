@@ -150,9 +150,9 @@ tryEnterGiveaway :: GiveawayEntry -> EnterM ()
 tryEnterGiveaway gi@GiveawayEntry{url=url} = do
     cfg <- ask
     r <- gets (view retriesInfo)
-    case r of
-        0 -> logTimeM $ "No retries left. Giving up on " ++ url
-        _ -> do
+    if r == 0
+        then logTimeM $ "No retries left. Giving up on " ++ url
+        else do
             res <- liftIO $ getGiveaway url cfg
             either handleFailure handleSuccess $ res
   where
@@ -172,9 +172,9 @@ tryEnterGiveaway gi@GiveawayEntry{url=url} = do
 enterGiveawayRetry :: Giveaway -> EnterM ()
 enterGiveawayRetry g@Giveaway{..} = do
     r <- gets (view retriesEnter)
-    case r of
-        0 -> logTimeM $ "No retries left. Unknown status for " ++ url
-        _ -> do
+    if r == 0
+        then logTimeM $ "No retries left. Unknown status for " ++ url
+        else do
             cfg <- ask
             isEntered <- liftIO $ enterGiveaway g cfg
             case isEntered of
