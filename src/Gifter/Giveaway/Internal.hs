@@ -22,4 +22,5 @@ data GiveawayStatus =
         | Entered
         | MissingBaseGame
         | ComingSoon
+        | NotEnoughPoints
         deriving (Show, Eq)

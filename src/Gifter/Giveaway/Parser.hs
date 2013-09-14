@@ -66,6 +66,7 @@ parseStatus c = parseData [jq| div.details .rounded |] c >>= toStatus
             | "Enter to Win" `T.isPrefixOf` msg
                 = Open <$> readMay (digitsOnly . T.unpack $ msg)
             | "Remove Entry" `T.isInfixOf` msg = Just Entered
+            | "Not Enough Points" `T.isPrefixOf` msg = Just NotEnoughPoints
           toStatus _ = Nothing
 
 parseEntries :: Cursor -> Maybe Integer
