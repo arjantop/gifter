@@ -16,6 +16,12 @@
                 "key1",
                 "multi key"
             ]
+        },
+        {
+            "keywords": ["word"],
+            "not.keywords" : ["key"],
+            "points.lt": 10,
+            "copies.gte": 2
         }
     ]
 }

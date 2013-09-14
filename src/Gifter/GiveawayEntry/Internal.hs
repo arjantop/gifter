@@ -8,5 +8,5 @@ data GiveawayEntry =
             url :: String,
             gameTitle :: String,
             copies :: Integer,
-            points :: Int
+            points :: Integer
         } deriving (Show, Eq)
