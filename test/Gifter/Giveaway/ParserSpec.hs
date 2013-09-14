@@ -46,6 +46,9 @@ loadXcomDlcMissingBaseGame :: IO Cursor
 loadXcomDlcMissingBaseGame =
         loadHtml "test/files/XcomEliteSoldierPackMissingBaseGame.html"
 
+loadGiveawayRemoved :: IO Cursor
+loadGiveawayRemoved = loadHtml "test/files/GiveawayRemoved.html"
+
 spec :: Spec
 spec =
     describe "parse" $ do
@@ -113,3 +116,5 @@ spec =
                         formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap (parse "me") loadMirrorsEdgeComingSoon `shouldReturn` Right g
+        it "shoud return error status GiveawayRemoved if the giveaway has been removed" $ do
+            fmap (parse "removed") loadGiveawayRemoved `shouldReturn` Left GiveawayRemoved

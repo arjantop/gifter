@@ -38,7 +38,7 @@ canEnter Giveaway {status = Open _} = True
 canEnter _                          = False
 
 isRemoved :: GiveawayError -> Bool
-isRemoved (ResponseParseError DataParseError) = True
+isRemoved (ResponseParseError GiveawayRemoved) = True
 isRemoved _                                   = False
 
 getGiveaway :: Url -> Config -> IO (Either GiveawayError Giveaway)

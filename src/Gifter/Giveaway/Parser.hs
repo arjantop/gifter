@@ -36,7 +36,7 @@ parse u c = case parseGiveaway u c of
   where
     checkIfRemoved =
         let t = parseData [jq| div.notification |] c
-            isRemoved = (`T.isInfixOf` "has beed removed") `fmap` t
+            isRemoved = ("been removed" `T.isInfixOf`) `fmap` t
         in fromMaybe False isRemoved
 
 parseGiveaway :: Url -> Cursor -> Maybe Giveaway
