@@ -77,13 +77,34 @@ spec =
                         (Just (Lt 10)) Nothing
             match (withPoints 9) ec `shouldBe` True
             match (withPoints 10) ec `shouldBe` False
-        it "should match if number of compies is more or equal to number of copies in conditon" $ do
+        it "should match if points is less or equal than the price in condition" $ do
+            let ec = EntryCondition
+                        Nothing Nothing Nothing
+                        (Just (Lte 10)) Nothing
+            match (withPoints 9) ec `shouldBe` True
+            match (withPoints 10) ec `shouldBe` True
+            match (withPoints 11) ec `shouldBe` False
+        it "should match if points is equal to the price in condition" $ do
+            let ec = EntryCondition
+                        Nothing Nothing Nothing
+                        (Just (Eq 15)) Nothing
+            match (withPoints 14) ec `shouldBe` False
+            match (withPoints 15) ec `shouldBe` True
+            match (withPoints 16) ec `shouldBe` False
+        it "should match if number of compies is greater than number of copies in conditon" $ do
+            let ec = EntryCondition
+                        Nothing Nothing Nothing
+                        Nothing (Just (Gt 11))
+            match (withCopies 10) ec `shouldBe` False
+            match (withCopies 11) ec `shouldBe` False
+            match (withCopies 12) ec `shouldBe` True
+        it "should match if number of compies is greater or equal to number of copies in conditon" $ do
             let ec = EntryCondition
                         Nothing Nothing Nothing
                         Nothing (Just (Gte 3))
-            match (withCopies 4) ec `shouldBe` True
-            match (withCopies 3) ec `shouldBe` True
             match (withCopies 2) ec `shouldBe` False
+            match (withCopies 3) ec `shouldBe` True
+            match (withCopies 4) ec `shouldBe` True
         it "should only match if all the conditions succeed" $ do
             let ec = EntryCondition
                         (Just ["Title"]) (Just ["key"]) Nothing
