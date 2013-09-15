@@ -18,6 +18,7 @@ import qualified Network.HTTP.Conduit as CH
 import Data.Maybe (fromMaybe)
 import qualified Data.ByteString.Lazy as SL
 
+import Control.Lens
 import Control.Monad
 import Control.Exception (try)
 import Control.Arrow
@@ -39,14 +40,14 @@ isRemoved (ResponseParseError GiveawayRemoved) = True
 isRemoved _                                   = False
 
 getGiveaway :: Url -> Config -> IO (Either GiveawayError Giveaway)
-getGiveaway gurl Config{..} =
-    handleResponse $ request gurl "GET" [] _sessionId (parseResponse gurl)
+getGiveaway gurl cfg =
+    handleResponse $ request gurl "GET" [] (cfg^.sessionId) (parseResponse gurl)
 
 enterGiveaway :: Giveaway -> Config -> IO (Either GiveawayError Bool)
-enterGiveaway Giveaway{formKey=formKey,url=url} Config{..} = do
+enterGiveaway Giveaway{formKey=formKey,url=url} cfg = do
     let key = fromMaybe "" formKey
         params = [("enter_giveaway", "1"), ("form_key", key)]
-    r <- handleResponse $ request url "POST" params _sessionId (parseResponse url)
+    r <- handleResponse $ request url "POST" params (cfg^.sessionId) (parseResponse url)
     return . right ((==Entered) . status) $ r
 
 parseResponse :: Url -> SL.ByteString -> Either DataError Giveaway

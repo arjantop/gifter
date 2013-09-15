@@ -28,18 +28,18 @@ parseRss = tagName "rss" ignoreAttrs
 
 parseChannel :: ConduitM Event o (ResourceT IO) (Maybe [GiveawayEntry])
 parseChannel = tagNoAttr "channel" $ do
-    skipUntilTag "item"
+    _ <- skipUntilTag "item"
     many (join `liftM` parseItem)
 
 parseItem :: ConduitM Event o (ResourceT IO) (Maybe (Maybe GiveawayEntry))
 parseItem = tagName "item" ignoreAttrs $ \_ -> do
     title <- tagNoAttr "title" content
     let (t, c, p) = parseTitle (unpack . fromMaybe "" $ title)
-    skipTag "link"
+    _ <- skipTag "link"
     guid <- tagName "guid" ignoreAttrs (const content)
-    skipTag "pubDate"
-    skipTag "description"
-    skipTag "origLink"
+    _ <- skipTag "pubDate"
+    _ <- skipTag "description"
+    _ <- skipTag "origLink"
     return $ GiveawayEntry <$> (unpack `fmap` guid) <*> t <*> c <*> p
   where
     parseTitle rt

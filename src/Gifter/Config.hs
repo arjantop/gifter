@@ -14,7 +14,6 @@ module Gifter.Config (
     match
 ) where
 
-
 import Data.Conduit (($$))
 import qualified Data.Conduit.Binary as CB
 import Data.Aeson

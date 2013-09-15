@@ -17,6 +17,7 @@ import System.Locale
 
 import Data.Time.Clock
 import Data.Time.Format
+import qualified Data.HashSet as HS
 
 import Text.Printf
 
@@ -83,7 +84,12 @@ tryGetSteamGames cfg = do
     loop n = do
         sge <- getSteamGames (cfg^.sessionId)
         case sge of
-            Right sg -> startTasks cfg sg
+            Right sg -> do
+                let nGames = HS.size (sg^.owned)
+                    nWish = HS.size (sg^.wishlist)
+                logTime $ "You currently own " ++ (show nGames) ++ " games"
+                logTime $ "You have " ++ (show nWish) ++ " games in wishlist"
+                startTasks cfg sg
             Left _ -> do
                 logTime "Could not get steam game list. Retrying"
                 delay (cfg^.requestDelay)
@@ -118,8 +124,8 @@ pollGiveawayEntries = do
   where
     handleEntries gs = do
         cfg <- ask
-        gc <- gets (view giveawayChannel)
-        lg <- gets (view lastChecked)
+        gc <- gets (^.giveawayChannel)
+        lg <- gets (^.lastChecked)
         let newGs = maybe gs (\u -> takeWhile ((u /=) . GE.url) gs) lg
             gUrl = GE.url `fmap` headMay newGs
         logTimeM $ "Got " ++ (show . length $ newGs) ++ " new giveaways"
@@ -130,7 +136,7 @@ pollGiveawayEntries = do
 
 
 enterSelectedGiveaways :: TChan (DataEvent GiveawayEntry) -> Config -> SteamGames -> IO ()
-enterSelectedGiveaways gc cfg@Config{..} sg = do
+enterSelectedGiveaways gc cfg sg = do
     NewData gs <- atomically $ readTChan gc
     let filteredGs = filter (liftM2 (&&)
                                 (conditionsMatchAny $ cfg^.enter)
@@ -142,14 +148,14 @@ enterSelectedGiveaways gc cfg@Config{..} sg = do
   where
     enterAll = mapM_ enterOne
     enterOne g = do
-        let es = EnterState _maxRetries _maxRetries
+        let es = EnterState (cfg^.maxRetries) (cfg^.maxRetries)
         runEnterM cfg es $ tryEnterGiveaway g
-        delay _requestDelay
+        delay (cfg^.requestDelay)
 
 tryEnterGiveaway :: GiveawayEntry -> EnterM ()
 tryEnterGiveaway gi@GiveawayEntry{url=url} = do
     cfg <- ask
-    r <- gets (view retriesInfo)
+    r <- gets (^.retriesInfo)
     if r == 0
         then logTimeM $ "No retries left. Giving up on " ++ url
         else do
@@ -171,7 +177,7 @@ tryEnterGiveaway gi@GiveawayEntry{url=url} = do
 
 enterGiveawayRetry :: Giveaway -> EnterM ()
 enterGiveawayRetry g@Giveaway{..} = do
-    r <- gets (view retriesEnter)
+    r <- gets (^.retriesEnter)
     if r == 0
         then logTimeM $ "No retries left. Unknown status for " ++ url
         else do
