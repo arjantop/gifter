@@ -39,30 +39,23 @@ data PollState = PollState {
     }
 makeLenses ''PollState
 
-newtype PollM a = PollM {
-        unPollM :: ReaderT Config (StateT PollState IO) a
-    } deriving (Monad, MonadState PollState, MonadReader Config, MonadIO)
-
-runPollM :: Config -> PollState -> PollM a -> IO a
-runPollM cfg ps m = evalStateT (runReaderT (unPollM m) cfg) ps
-
 data EnterState = EnterState {
         _retriesInfo :: Integer,
         _retriesEnter :: Integer
     }
 makeLenses ''EnterState
 
-newtype EnterM a = EnterM {
-        unEnterM :: ReaderT Config (StateT EnterState IO) a
-    } deriving (Monad, MonadIO, MonadReader Config, MonadState EnterState)
+newtype TaskM s a = TaskM {
+        unPollM :: ReaderT Config (StateT s IO) a
+    } deriving (Monad, MonadState s, MonadReader Config, MonadIO)
 
-runEnterM :: Config -> EnterState -> EnterM a -> IO a
-runEnterM cfg es m = evalStateT (runReaderT (unEnterM m) cfg) es
+runTaskM :: Config -> s -> TaskM s a -> IO a
+runTaskM cfg ts m = evalStateT (runReaderT (unPollM m) cfg) ts
 
-decRetriesInfo :: EnterM ()
+decRetriesInfo :: TaskM EnterState ()
 decRetriesInfo = modify (over retriesInfo pred)
 
-decRetriesEnter :: EnterM ()
+decRetriesEnter :: TaskM EnterState ()
 decRetriesEnter = modify (over retriesEnter pred)
 
 main :: IO ()
@@ -99,7 +92,7 @@ startTasks :: Config -> SteamGames -> IO ()
 startTasks cfg sg = do
     giveChan <- newTChanIO
     let ps = PollState Nothing giveChan
-    r1 <- async (runPollM cfg ps $ pollGiveawayEntries)
+    r1 <- async (runTaskM cfg ps $ pollGiveawayEntries)
     r2 <- async (enterSelectedGiveaways giveChan cfg sg)
     res <- waitEitherCatchCancel r1 r2
     handleErrors res
@@ -110,7 +103,7 @@ startTasks cfg sg = do
         logTime $ "Enter giveaways thread failed with exception: " ++ show e
     handleErrors _ = logTime "Unexpected return value"
 
-pollGiveawayEntries :: PollM ()
+pollGiveawayEntries :: TaskM PollState ()
 pollGiveawayEntries = do
     gse <- liftIO $ getEntries 999
     case gse of
@@ -149,10 +142,10 @@ enterSelectedGiveaways gc cfg sg = do
     enterAll = mapM_ enterOne
     enterOne g = do
         let es = EnterState (cfg^.maxRetries) (cfg^.maxRetries)
-        runEnterM cfg es $ tryEnterGiveaway g
+        runTaskM cfg es $ tryEnterGiveaway g
         delay (cfg^.requestDelay)
 
-tryEnterGiveaway :: GiveawayEntry -> EnterM ()
+tryEnterGiveaway :: GiveawayEntry -> TaskM EnterState ()
 tryEnterGiveaway gi@GiveawayEntry{url=url} = do
     cfg <- ask
     r <- gets (^.retriesInfo)
@@ -175,7 +168,7 @@ tryEnterGiveaway gi@GiveawayEntry{url=url} = do
             decRetriesInfo
             tryEnterGiveaway gi
 
-enterGiveawayRetry :: Giveaway -> EnterM ()
+enterGiveawayRetry :: Giveaway -> TaskM EnterState ()
 enterGiveawayRetry g@Giveaway{..} = do
     r <- gets (^.retriesEnter)
     if r == 0
