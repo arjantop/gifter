@@ -32,12 +32,13 @@ main = do
     giveChan <- newTChanIO
     ecfg <- readConfig cloc
     case ecfg of
-        Just cfg -> do
+        Right cfg -> do
             r1 <- async (pollGiveawayEntries giveChan cfg Nothing)
             r2 <- async (enterSelectedGiveaways giveChan cfg)
             res <- waitEitherCatchCancel r1 r2
             handleErrors res
-        _ -> logTime $ "Missing config file: " ++ cloc
+        Left (MissingFile fp) -> logTime $ "Missing config file: " ++ fp
+        Left ConfigParseError -> logTime $ "Config parse error"
   where
     handleErrors (Left (Left e)) =
         logTime $ "Poll thread failed with exception: " ++ show e

@@ -2,6 +2,7 @@
 module Gifter.Config (
     Config(..),
     EntryCondition(..),
+    ConfigError(..),
     readConfig,
     defaultLocation,
     match
@@ -40,10 +41,22 @@ instance FromJSON Config where
                            v .: "enter"
     parseJSON _          = mzero
 
+data ConfigError = MissingFile FilePath
+                 | ConfigParseError
+                 deriving (Show, Eq)
+
 defaultLocation :: IO String
 defaultLocation =
     (`combine` ".config/gifter/config.json") `liftM` getHomeDirectory
 
-readConfig :: FilePath -> IO (Maybe Config)
-readConfig fp = decode `liftM` content
+readConfig :: FilePath -> IO (Either ConfigError Config)
+readConfig fp = do
+    exists <- doesFileExist fp
+    if exists
+        then do
+            res <- decode `liftM` content
+            case res of
+                Nothing -> return . Left $ ConfigParseError
+                Just cfg -> return . Right $ cfg
+        else return . Left $ MissingFile fp
   where content = runResourceT $ CB.sourceFile fp $$ CB.sinkLbs

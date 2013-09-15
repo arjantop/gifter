@@ -42,4 +42,4 @@ spec = do
                             (Just $ Gte 2)
                     ]
                  }
-            readConfig "test/files/config.json" `shouldReturn` Just cfg
+            readConfig "test/files/config.json" `shouldReturn` Right cfg
