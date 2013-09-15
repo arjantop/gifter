@@ -44,7 +44,8 @@ executable gifterd
     old-locale                  >= 1.0,
     aeson                       >= 0.6,
     regex-pcre-builtin          >= 0.94,
-    unordered-containers        >= 0.2
+    unordered-containers        >= 0.2,
+    lens                        >= 3.9
   
 test-suite spec
   type: exitcode-stdio-1.0
@@ -71,4 +72,5 @@ test-suite spec
     aeson                       >= 0.6,
     hspec                       >= 1.7,
     regex-pcre-builtin          >= 0.94,
-    unordered-containers        >= 0.2
+    unordered-containers        >= 0.2,
+    lens                        >= 3.9

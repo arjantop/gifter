@@ -3,8 +3,6 @@ module Gifter.GiveawayEntry (
     getEntries
 ) where
 
-import Gifter.GiveawayEntry.Internal
-
 import Network (withSocketsDo)
 import qualified Network.HTTP.Conduit as CH
 
@@ -15,6 +13,7 @@ import Data.Conduit (($$))
 
 import qualified Text.XML.Stream.Parse as XML
 
+import Gifter.GiveawayEntry.Internal
 import Gifter.GiveawayEntry.Parser
 
 getEntries :: Int -> IO (Either SomeException [GiveawayEntry])

@@ -22,6 +22,7 @@ import Gifter.Config
 import Gifter.GiveawayEntry
 import qualified Gifter.GiveawayEntry as GE
 import Gifter.Giveaway
+import Gifter.SteamGames
 
 newtype DataEvent a = NewData [a]
 
@@ -29,16 +30,34 @@ main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
     cloc <- defaultLocation
-    giveChan <- newTChanIO
     ecfg <- readConfig cloc
     case ecfg of
-        Right cfg -> do
-            r1 <- async (pollGiveawayEntries giveChan cfg Nothing)
-            r2 <- async (enterSelectedGiveaways giveChan cfg)
-            res <- waitEitherCatchCancel r1 r2
-            handleErrors res
+        Right cfg -> tryGetSteamGames cfg
         Left (MissingFile fp) -> logTime $ "Missing config file: " ++ fp
         Left ConfigParseError -> logTime $ "Config parse error"
+
+tryGetSteamGames :: Config -> IO ()
+tryGetSteamGames cfg = do
+    logTime "Trying to get steam game list"
+    loop (maxRetries cfg)
+  where
+    loop 0 = logTime "Error getting steam games list"
+    loop n = do
+        sge <- getSteamGames (sessionId cfg)
+        case sge of
+            Right sg -> startTasks cfg sg
+            Left _ -> do
+                logTime "Could not get steam game list. Retrying"
+                delay (requestDelay cfg)
+                loop (n - 1)
+
+startTasks :: Config -> SteamGames -> IO ()
+startTasks cfg sg = do
+    giveChan <- newTChanIO
+    r1 <- async (pollGiveawayEntries giveChan cfg Nothing)
+    r2 <- async (enterSelectedGiveaways giveChan cfg sg)
+    res <- waitEitherCatchCancel r1 r2
+    handleErrors res
   where
     handleErrors (Left (Left e)) =
         logTime $ "Poll thread failed with exception: " ++ show e
@@ -68,14 +87,16 @@ pollGiveawayEntries gc cfg@Config{..} lg = do
         pollGiveawayEntries gc cfg (headMay newGs `mplus` lg)
 
 
-enterSelectedGiveaways :: TChan (DataEvent GiveawayEntry) -> Config -> IO b
-enterSelectedGiveaways gc cfg@Config{..} = do
+enterSelectedGiveaways :: TChan (DataEvent GiveawayEntry) -> Config -> SteamGames -> IO ()
+enterSelectedGiveaways gc cfg@Config{..} sg = do
     NewData gs <- atomically $ readTChan gc
-    let filteredGs = filter (conditionsMatchAny enter) gs
+    let filteredGs = filter (liftM2 (&&)
+                                (conditionsMatchAny enter)
+                                (not . isAlreadyOwned sg)) gs
     logTime $ "Trying to enter " ++ (show . length $ filteredGs) ++ " giveaways"
     enterAll filteredGs
     delay pollDelay
-    enterSelectedGiveaways gc cfg
+    enterSelectedGiveaways gc cfg sg
   where
     enterAll = mapM_ ((>> delay requestDelay) . enterOne maxRetries)
     enterOne 0 GiveawayEntry{..} = 
