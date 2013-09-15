@@ -20,9 +20,15 @@ rssEntries :: [GiveawayEntry]
 rssEntries = [
         GiveawayEntry {
             url = "http://www.steamgifts.com/giveaway/niIHw/primordia",
-            gameTitle = "Primordia",
+            gameTitle = "Humble Deep Silver Bundle (Above Average)",
             copies = 1,
             points = 10
+        },
+        GiveawayEntry {
+            url = "http://www.steamgifts.com/giveaway/niIHw/primordia",
+            gameTitle = "Humble Deep Silver Bundle (Above Average)",
+            copies = 5,
+            points = 8
         },
         GiveawayEntry {
             url = "http://www.steamgifts.com/giveaway/Nq3zH/fortix",

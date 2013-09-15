@@ -13,7 +13,7 @@ import Data.XML.Types
 import Data.Maybe (fromMaybe)
 
 import Text.XML.Stream.Parse
-import Text.Regex.Posix
+import Text.Regex.PCRE
 
 import Safe
 
@@ -48,7 +48,7 @@ parseItem = tagName "item" ignoreAttrs $ \_ -> do
           in (atMay matches 0,
               c `mplus` Just 1,
               atMay matches 3 >>= readMay)
-    pat = "^([^(]+) (\\(([0-9]+) Copies\\) )?\\(([0-9]+)P\\)$" :: String
+    pat = "^(.+?) (\\(([0-9]+) Copies\\) )?\\(([0-9]+)P\\)$" :: String
 
 skipUntilTag :: Monad m => Text -> ConduitM Event o m [()]
 skipUntilTag name = many skipAllTagsUntil
