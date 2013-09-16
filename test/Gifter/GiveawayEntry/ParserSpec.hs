@@ -32,7 +32,7 @@ rssEntries = [
         },
         GiveawayEntry {
             url = "http://www.steamgifts.com/giveaway/Nq3zH/fortix",
-            gameTitle = "Fortix",
+            gameTitle = "Command & Conquer",
             copies = 5,
             points = 1
         },
