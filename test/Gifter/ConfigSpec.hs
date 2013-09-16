@@ -27,19 +27,25 @@ spec = do
                             Nothing
                             Nothing
                             Nothing
-                            Nothing,
+                            Nothing
+                            Nothing
+                            False,
                         EntryCondition
                             Nothing
+                            (Just ["game 1"])
                             (Just ["key1", "multi key"])
                             Nothing
                             Nothing
-                            Nothing,
+                            Nothing
+                            True,
                         EntryCondition
+                            Nothing
                             Nothing
                             (Just ["word"])
                             (Just ["key"])
                             (Just $ Lt 10)
                             (Just $ Gte 2)
+                            False
                     ]
                  }
             readConfig "test/files/config.json" `shouldReturn` Right cfg

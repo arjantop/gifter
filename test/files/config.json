@@ -12,10 +12,12 @@
             ]
         },
         {
+            "not.games": ["game 1"],
             "keywords": [
                 "key1",
                 "multi key"
-            ]
+            ],
+            "wishlist": true
         },
         {
             "keywords": ["word"],

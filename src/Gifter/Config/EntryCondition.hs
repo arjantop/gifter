@@ -11,11 +11,14 @@ import Data.List
 import Data.Char (toLower)
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
+import qualified Data.HashSet as HS
 
+import Control.Lens
 import Control.Monad
 import Control.Applicative
 
 import Gifter.GiveawayEntry as GE
+import qualified Gifter.SteamGames as SG
 
 data OrdCond a = Eq a
                | Lt a
@@ -25,10 +28,10 @@ data OrdCond a = Eq a
                deriving (Show, Eq)
 
 withOrdCond :: (FromJSON a) => Object -> T.Text -> Parser (Maybe (OrdCond a))
-withOrdCond obj key = parse (sfx `zip` cons)
+withOrdCond obj key = parse (sfx `zip` dcons)
   where
     sfx = [".eq", ".lt", ".lte", ".gt", ".gte"]
-    cons = [Eq, Lt, Lte, Gt, Gte]
+    dcons = [Eq, Lt, Lte, Gt, Gte]
     parse []     = pure Nothing
     parse (s:ss) = case H.lookup (key `T.append` fst s) obj of
                        Nothing -> parse ss
@@ -36,37 +39,46 @@ withOrdCond obj key = parse (sfx `zip` cons)
 
 data EntryCondition = EntryCondition {
         games :: Maybe [String],
+        notGames :: Maybe [String],
         keywords :: Maybe [String],
         notKeywords :: Maybe [String],
         points :: Maybe (OrdCond Integer),
-        copies :: Maybe (OrdCond Integer)
+        copies :: Maybe (OrdCond Integer),
+        wishlist :: Bool
     } deriving (Show, Eq)
 
 instance FromJSON EntryCondition where
     parseJSON (Object v) = EntryCondition <$>
                            v .:? "games" <*>
+                           v .:? "not.games" <*>
                            v .:? "keywords" <*>
                            v .:? "not.keywords" <*>
                            v `withOrdCond` "points" <*>
-                           v `withOrdCond` "copies"
+                           v `withOrdCond` "copies" <*>
+                           v .:? "wishlist" .!= False
     parseJSON _          = mzero
 
-match :: GiveawayEntry -> EntryCondition -> Bool
-match ge EntryCondition{..} = and [
+match :: GiveawayEntry -> SG.SteamGames -> EntryCondition -> Bool
+match ge sg EntryCondition{..} = and [
         c (matchGames ge) games,
+        c (matchNotGamed ge) notGames,
         c (matchKeywords ge) keywords,
         c (matchNotKeywords ge) notKeywords,
         c (matchOrdCond ge GE.points) points,
-        c (matchOrdCond ge GE.copies) copies
+        c (matchOrdCond ge GE.copies) copies,
+        matchWishlist wishlist
     ]
   where 
     c = maybe True
     matchGames GiveawayEntry{gameTitle=gameTitle} gs = gameTitle `elem` gs
+    matchNotGamed g = not . matchGames g
     matchKeywords GiveawayEntry{gameTitle=gameTitle} ks =
         let gameTitleLower = map toLower gameTitle
         in any (matchKeyword gameTitleLower) ks
     matchKeyword gt k = all (`isInfixOf` gt) (words k)
     matchNotKeywords g = not . matchKeywords g
+    matchWishlist False = True
+    matchWishlist True = T.pack (gameTitle ge) `HS.member` (sg^.SG.wishlist)
     matchOrdCond g f oc = case oc of
                              Eq x -> f g == x
                              Lt x -> f g < x

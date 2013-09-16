@@ -27,7 +27,7 @@ import Gifter.Config
 import Gifter.GiveawayEntry
 import qualified Gifter.GiveawayEntry as GE
 import Gifter.Giveaway
-import Gifter.SteamGames
+import Gifter.SteamGames as SG
 
 newtype DataEvent a = NewData [a]
 
@@ -78,8 +78,8 @@ tryGetSteamGames cfg = do
         sge <- getSteamGames (cfg^.sessionId)
         case sge of
             Right sg -> do
-                let nGames = HS.size (sg^.owned)
-                    nWish = HS.size (sg^.wishlist)
+                let nGames = HS.size (sg^.SG.owned)
+                    nWish = HS.size (sg^.SG.wishlist)
                 logTime $ "You currently own " ++ (show nGames) ++ " games"
                 logTime $ "You have " ++ (show nWish) ++ " games in wishlist"
                 startTasks cfg sg
@@ -132,7 +132,7 @@ enterSelectedGiveaways :: TChan (DataEvent GiveawayEntry) -> Config -> SteamGame
 enterSelectedGiveaways gc cfg sg = do
     NewData gs <- atomically $ readTChan gc
     let filteredGs = filter (liftM2 (&&)
-                                (conditionsMatchAny $ cfg^.enter)
+                                (conditionsMatchAny (cfg^.enter) sg)
                                 (not . isAlreadyOwned sg)) gs
     logTime $ "Trying to enter " ++ (show . length $ filteredGs) ++ " giveaways"
     enterAll filteredGs
@@ -190,8 +190,8 @@ delay ms = threadDelay (fromIntegral ms * 1000000)
 delayM :: (MonadIO m) => Integer -> m ()
 delayM = liftIO . delay
 
-conditionsMatchAny :: [EntryCondition] -> GiveawayEntry -> Bool
-conditionsMatchAny cnd g = any (match g) cnd
+conditionsMatchAny :: [EntryCondition] -> SteamGames-> GiveawayEntry -> Bool
+conditionsMatchAny cnd sg g = any (match g sg) cnd
 
 logTime :: String -> IO ()
 logTime s = do
