@@ -17,6 +17,7 @@ import System.Locale
 
 import Data.Time.Clock
 import Data.Time.Format
+import Data.Time.LocalTime
 import qualified Data.HashSet as HS
 
 import Text.Printf
@@ -195,7 +196,9 @@ conditionsMatchAny cnd sg g = any (match g sg) cnd
 
 logTime :: String -> IO ()
 logTime s = do
-    time <- getCurrentTime
+    utcTime <- getCurrentTime
+    tz <- getTimeZone utcTime
+    let time = utcToLocalTime tz utcTime
     let formattedTime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" time
     void $ printf "[%s] %s" formattedTime s
     putStrLn ""
