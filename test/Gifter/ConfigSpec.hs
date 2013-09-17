@@ -46,6 +46,7 @@ spec = do
                             (Just $ Lt 10)
                             (Just $ Gte 2)
                             False
-                    ]
+                    ],
+                    _cfgDir = "test/files/"
                  }
             readConfig "test/files/config.json" `shouldReturn` Right cfg

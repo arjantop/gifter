@@ -7,10 +7,12 @@ module Gifter.Config (
     maxRetries,
     retryDelay,
     enter,
+    cfgDir,
     EntryCondition(..),
     ConfigError(..),
     readConfig,
     defaultLocation,
+    defaultDir,
     match
 ) where
 
@@ -34,7 +36,8 @@ data Config = Config {
         _requestDelay :: Integer,
         _maxRetries :: Integer,
         _retryDelay :: Integer,
-        _enter :: [EntryCondition]
+        _enter :: [EntryCondition],
+        _cfgDir :: FilePath
     } deriving (Show, Eq)
 makeLenses ''Config
 
@@ -45,16 +48,20 @@ instance FromJSON Config where
                            v .: "requestDelay" <*>
                            v .: "maxRetries" <*>
                            v .: "retryDelay" <*>
-                           v .: "enter"
+                           v .: "enter" <*>
+                           return ""
     parseJSON _          = mzero
 
 data ConfigError = MissingFile FilePath
                  | ConfigParseError
                  deriving (Show, Eq)
 
+defaultDir :: IO String
+defaultDir = (`combine` ".config/gifter/") `liftM` getHomeDirectory
+
 defaultLocation :: IO String
 defaultLocation =
-    (`combine` ".config/gifter/config.json") `liftM` getHomeDirectory
+    (`combine` "config.json") `liftM` defaultDir
 
 readConfig :: FilePath -> IO (Either ConfigError Config)
 readConfig fp = do
@@ -64,6 +71,6 @@ readConfig fp = do
             res <- decode `liftM` content
             case res of
                 Nothing -> return . Left $ ConfigParseError
-                Just cfg -> return . Right $ cfg
+                Just cfg -> return . Right $ cfg & cfgDir .~ (dropFileName fp)
         else return . Left $ MissingFile fp
   where content = runResourceT $ CB.sourceFile fp $$ CB.sinkLbs

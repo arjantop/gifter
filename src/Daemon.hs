@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, RankNTypes, TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards, TemplateHaskell #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Main (
     main
@@ -14,11 +14,20 @@ import Control.Monad.State
 
 import System.IO
 import System.Locale
+import System.Directory
+import System.FilePath.Posix
 
+import Data.Conduit
+import Data.Conduit.Binary
 import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
+import Data.Maybe
+import Data.List as L
 import qualified Data.HashSet as HS
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import Data.Text.Lazy.Encoding
 
 import Text.Printf
 
@@ -92,7 +101,8 @@ tryGetSteamGames cfg = do
 startTasks :: Config -> SteamGames -> IO ()
 startTasks cfg sg = do
     giveChan <- newTChanIO
-    let ps = PollState Nothing giveChan
+    lastChPer <- readLastChecked $ lastCheckedFile cfg
+    let ps = PollState (fmap T.unpack lastChPer) giveChan
     r1 <- async (runTaskM cfg ps $ pollGiveawayEntries)
     r2 <- async (enterSelectedGiveaways giveChan cfg sg)
     res <- waitEitherCatchCancel r1 r2
@@ -103,6 +113,22 @@ startTasks cfg sg = do
     handleErrors (Right (Left e)) =
         logTime $ "Enter giveaways thread failed with exception: " ++ show e
     handleErrors _ = logTime "Unexpected return value"
+
+lastCheckedFile :: Config -> FilePath
+lastCheckedFile cfg = (cfg^.cfgDir) `combine` "last"
+
+readLastChecked :: FilePath -> IO (Maybe T.Text)
+readLastChecked fp = do
+    exists <- doesFileExist fp
+    if exists
+        then do
+            c <- runResourceT $ sourceFile fp $$ sinkLbs
+            return $ Just (TL.toStrict . decodeUtf8 $ c)
+        else return Nothing
+
+writeLastChecked :: FilePath -> T.Text -> IO ()
+writeLastChecked fp s =
+    runResourceT $ sourceLbs (encodeUtf8 . TL.fromStrict $ s) $$ sinkFile fp
 
 pollGiveawayEntries :: TaskM PollState ()
 pollGiveawayEntries = do
@@ -120,12 +146,15 @@ pollGiveawayEntries = do
         cfg <- ask
         gc <- gets (^.giveawayChannel)
         lg <- gets (^.lastChecked)
-        let newGs = maybe gs (\u -> takeWhile ((u /=) . GE.url) gs) lg
+        let newGs = maybe gs (\u -> L.takeWhile ((u /=) . GE.url) gs) lg
             gUrl = GE.url `fmap` headMay newGs
+            newLs = gUrl `mplus` lg
+        when (isJust gUrl) . liftIO $
+            writeLastChecked (lastCheckedFile cfg) (T.pack . fromJust $ newLs)
         logTimeM $ "Got " ++ (show . length $ newGs) ++ " new giveaways"
         liftIO $ atomically $ writeTChan gc (NewData newGs)
         delayM (cfg ^. pollDelay)
-        modify (over lastChecked (gUrl `mplus`))
+        modify (set lastChecked newLs)
         pollGiveawayEntries
 
 
