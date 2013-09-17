@@ -16,14 +16,14 @@ module Gifter.Config (
     match
 ) where
 
-import Data.Conduit (($$))
+import Data.Conduit
 import qualified Data.Conduit.Binary as CB
 import Data.Aeson
+import qualified Data.Text as T
 
 import Control.Lens
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Trans.Resource
 
 import System.Directory
 import System.FilePath.Posix
@@ -31,7 +31,7 @@ import System.FilePath.Posix
 import Gifter.Config.EntryCondition
 
 data Config = Config {
-        _sessionId :: String,
+        _sessionId :: T.Text,
         _pollDelay :: Integer,
         _requestDelay :: Integer,
         _maxRetries :: Integer,

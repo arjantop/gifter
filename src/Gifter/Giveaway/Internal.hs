@@ -1,14 +1,12 @@
 module Gifter.Giveaway.Internal where
 
-import qualified Data.ByteString as S
-
-type Url = String
+import qualified Data.Text as T
 
 data Giveaway = Giveaway {
-                url     :: Url
+                url     :: T.Text
               , status  :: GiveawayStatus
               , entries :: Integer
-              , formKey :: Maybe S.ByteString
+              , formKey :: Maybe T.Text
               } deriving (Show, Eq)
 
 type Points = Int

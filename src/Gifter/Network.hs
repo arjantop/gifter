@@ -8,19 +8,21 @@ import Network.HTTP.Conduit (Request(..),Cookie(..))
 
 import Data.Time.Clock
 import Data.Time.Calendar
+import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as SL
 import qualified Data.ByteString.Char8 as SC
 
-request :: String
+request :: T.Text
         -> SC.ByteString
         -> [(SC.ByteString, SC.ByteString)]
-        -> String
+        -> T.Text
         -> (SL.ByteString -> a)
         -> IO a
 request gurl m qs sessionId f = do
-    req' <- CH.parseUrl gurl
-    let reqWithCookies = req' {
-                cookieJar = Just $ CH.createCookieJar [sessionCookie sessionId],
+    req' <- CH.parseUrl (T.unpack gurl)
+    let jar = Just $ CH.createCookieJar [sessionCookie (T.unpack sessionId)]
+        reqWithCookies = req' {
+                cookieJar = jar,
                 method = m
             }
         req = if m == "POST"

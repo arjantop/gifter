@@ -11,10 +11,8 @@ import Text.XML.Scraping (innerHtml)
 import Text.XML.Selector.TH
 import Text.XML.Selector.Types (JQSelector)
 
-import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import Data.Text.Lazy (toStrict)
-import Data.Text.Encoding (encodeUtf8)
 import Data.Maybe (fromMaybe)
 
 import Safe
@@ -27,7 +25,7 @@ data DataError = GiveawayRemoved
                | DataParseError
                deriving (Show, Eq)
 
-parse :: Url -> Cursor -> Either DataError Giveaway
+parse :: T.Text -> Cursor -> Either DataError Giveaway
 parse u c = case parseGiveaway u c of
                 Nothing
                     | checkIfRemoved -> Left GiveawayRemoved
@@ -39,7 +37,7 @@ parse u c = case parseGiveaway u c of
             isRemoved = ("been removed" `T.isInfixOf`) `fmap` t
         in fromMaybe False isRemoved
 
-parseGiveaway :: Url -> Cursor -> Maybe Giveaway
+parseGiveaway :: T.Text -> Cursor -> Maybe Giveaway
 parseGiveaway u c = Giveaway <$>
             pure u <*>
             parseStatus c <*>
@@ -73,9 +71,8 @@ parseEntries :: Cursor -> Maybe Integer
 parseEntries c = (fmap (digitsOnly . T.unpack) .
                     parseData [jq| div.rounded.entries |] $ c) >>= readMay
 
-parseFormKey :: Cursor -> Maybe (Maybe BS.ByteString)
-parseFormKey c = Just $
-    fmap encodeUtf8 . parseAttribute [jq| input[name=form_key] |] $ c
+parseFormKey :: Cursor -> Maybe (Maybe T.Text)
+parseFormKey c = Just $ parseAttribute [jq| input[name=form_key] |] $ c
 
 digitsOnly :: String -> String
 digitsOnly = filter (`elem` ['0'..'9'])

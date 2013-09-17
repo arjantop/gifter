@@ -6,6 +6,7 @@ module Gifter.Config.EntryConditionSpec (
 
 import Test.Hspec
 
+import qualified Data.Text as T
 import qualified Data.HashSet as HS
 
 import Gifter.Config.EntryCondition
@@ -16,7 +17,7 @@ import Gifter.SteamGames.Internal
 main :: IO ()
 main = hspec spec
 
-withTitle :: String -> GiveawayEntry
+withTitle :: T.Text -> GiveawayEntry
 withTitle t = GiveawayEntry "" t 0 0
 
 withPoints :: Integer -> GiveawayEntry

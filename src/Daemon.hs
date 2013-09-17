@@ -26,6 +26,7 @@ import Data.Maybe
 import Data.List as L
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
+import Data.Text.Lens
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding
 
@@ -41,10 +42,8 @@ import Gifter.SteamGames as SG
 
 newtype DataEvent a = NewData [a]
 
-type Url = String
-
 data PollState = PollState {
-        _lastChecked :: Maybe Url,
+        _lastChecked :: Maybe T.Text,
         _giveawayChannel :: TChan (DataEvent GiveawayEntry)
     }
 makeLenses ''PollState
@@ -102,7 +101,7 @@ startTasks :: Config -> SteamGames -> IO ()
 startTasks cfg sg = do
     giveChan <- newTChanIO
     lastChPer <- readLastChecked $ lastCheckedFile cfg
-    let ps = PollState (fmap T.unpack lastChPer) giveChan
+    let ps = PollState lastChPer giveChan
     r1 <- async (runTaskM cfg ps $ pollGiveawayEntries)
     r2 <- async (enterSelectedGiveaways giveChan cfg sg)
     res <- waitEitherCatchCancel r1 r2
@@ -150,7 +149,7 @@ pollGiveawayEntries = do
             gUrl = GE.url `fmap` headMay newGs
             newLs = gUrl `mplus` lg
         when (isJust gUrl) . liftIO $
-            writeLastChecked (lastCheckedFile cfg) (T.pack . fromJust $ newLs)
+            writeLastChecked (lastCheckedFile cfg) (fromJust $ newLs)
         logTimeM $ "Got " ++ (show . length $ newGs) ++ " new giveaways"
         liftIO $ atomically $ writeTChan gc (NewData newGs)
         delayM (cfg ^. pollDelay)
@@ -180,7 +179,7 @@ tryEnterGiveaway gi@GiveawayEntry{url=url} = do
     cfg <- ask
     r <- gets (^.retriesInfo)
     if r == 0
-        then logTimeM $ "No retries left. Giving up on " ++ url
+        then logTimeM $ "No retries left. Giving up on " ++ url^.unpacked
         else do
             res <- liftIO $ getGiveaway url cfg
             either handleFailure handleSuccess $ res
@@ -189,11 +188,11 @@ tryEnterGiveaway gi@GiveawayEntry{url=url} = do
         | canEnter g = enterGiveawayRetry g
         | otherwise =
             let strStatus = show . status $ g
-            in logTimeM $ "Wrong status " ++ strStatus ++ " for " ++ url
+            in logTimeM $ "Wrong status " ++ strStatus ++ " for " ++ url^.unpacked
     handleFailure e
-        | isRemoved e = logTimeM $ "Removed: " ++ url
+        | isRemoved e = logTimeM $ "Removed: " ++ url^.unpacked
         | otherwise = do
-            logTimeM $ "Error getting info: " ++ url
+            logTimeM $ "Error getting info: " ++ url^.unpacked
             (asks $ view retryDelay) >>= delayM
             decRetriesInfo
             tryEnterGiveaway gi
@@ -202,14 +201,14 @@ enterGiveawayRetry :: Giveaway -> TaskM EnterState ()
 enterGiveawayRetry g@Giveaway{..} = do
     r <- gets (^.retriesEnter)
     if r == 0
-        then logTimeM $ "No retries left. Unknown status for " ++ url
+        then logTimeM $ "No retries left. Unknown status for " ++ url^.unpacked
         else do
             cfg <- ask
             isEntered <- liftIO $ enterGiveaway g cfg
             case isEntered of
-                Right True -> logTimeM $ "Entered: " ++ url
+                Right True -> logTimeM $ "Entered: " ++ url^.unpacked
                 _ -> do
-                    logTimeM $ "Error entering: " ++ url
+                    logTimeM $ "Error entering: " ++ url^.unpacked
                     delayM (cfg^.retryDelay)
                     decRetriesEnter
                     enterGiveawayRetry g

@@ -7,8 +7,6 @@ module Gifter.Config.EntryCondition (
 
 import Data.Aeson
 import Data.Aeson.Types (Parser)
-import Data.List
-import Data.Char (toLower)
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HS
@@ -38,10 +36,10 @@ withOrdCond obj key = parse (sfx `zip` dcons)
                        Just v -> (snd s `fmap`) `fmap` parseJSON v
 
 data EntryCondition = EntryCondition {
-        games :: Maybe [String],
-        notGames :: Maybe [String],
-        keywords :: Maybe [String],
-        notKeywords :: Maybe [String],
+        games :: Maybe [T.Text],
+        notGames :: Maybe [T.Text],
+        keywords :: Maybe [T.Text],
+        notKeywords :: Maybe [T.Text],
         points :: Maybe (OrdCond Integer),
         copies :: Maybe (OrdCond Integer),
         wishlist :: Bool
@@ -73,12 +71,12 @@ match ge sg EntryCondition{..} = and [
     matchGames GiveawayEntry{gameTitle=gameTitle} gs = gameTitle `elem` gs
     matchNotGamed g = not . matchGames g
     matchKeywords GiveawayEntry{gameTitle=gameTitle} ks =
-        let gameTitleLower = map toLower gameTitle
+        let gameTitleLower = T.toLower gameTitle
         in any (matchKeyword gameTitleLower) ks
-    matchKeyword gt k = all (`isInfixOf` gt) (words k)
+    matchKeyword gt k = all (`T.isInfixOf` gt) (T.words k)
     matchNotKeywords g = not . matchKeywords g
     matchWishlist False = True
-    matchWishlist True = T.pack (gameTitle ge) `HS.member` (sg^.SG.wishlist)
+    matchWishlist True = gameTitle ge `HS.member` (sg^.SG.wishlist)
     matchOrdCond g f oc = case oc of
                              Eq x -> f g == x
                              Lt x -> f g < x

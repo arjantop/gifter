@@ -16,7 +16,9 @@ import Text.HTML.DOM (parseLBS)
 import qualified Network.HTTP.Conduit as CH
 
 import Data.Maybe (fromMaybe)
+import qualified Data.ByteString.Char8 as SC
 import qualified Data.ByteString.Lazy as SL
+import qualified Data.Text as T
 
 import Control.Lens
 import Control.Monad
@@ -39,18 +41,18 @@ isRemoved :: GiveawayError -> Bool
 isRemoved (ResponseParseError GiveawayRemoved) = True
 isRemoved _                                   = False
 
-getGiveaway :: Url -> Config -> IO (Either GiveawayError Giveaway)
+getGiveaway :: T.Text -> Config -> IO (Either GiveawayError Giveaway)
 getGiveaway gurl cfg =
     handleResponse $ request gurl "GET" [] (cfg^.sessionId) (parseResponse gurl)
 
 enterGiveaway :: Giveaway -> Config -> IO (Either GiveawayError Bool)
 enterGiveaway Giveaway{formKey=formKey,url=url} cfg = do
     let key = fromMaybe "" formKey
-        params = [("enter_giveaway", "1"), ("form_key", key)]
+        params = [("enter_giveaway", "1"), ("form_key", SC.pack . T.unpack $ key)]
     r <- handleResponse $ request url "POST" params (cfg^.sessionId) (parseResponse url)
     return . right ((==Entered) . status) $ r
 
-parseResponse :: Url -> SL.ByteString -> Either DataError Giveaway
+parseResponse :: T.Text -> SL.ByteString -> Either DataError Giveaway
 parseResponse gurl = parse gurl . fromDocument . parseLBS
 
 handleResponse :: IO (Either DataError a) -> IO (Either GiveawayError a)

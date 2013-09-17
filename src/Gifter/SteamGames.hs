@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Gifter.SteamGames (
     SteamGames,
     owned,
@@ -22,14 +22,14 @@ import Gifter.GiveawayEntry
 import Gifter.SteamGames.Internal
 import Gifter.SteamGames.Parser
 
-getSteamGames :: String -> IO (Either SomeException SteamGames)
+getSteamGames :: T.Text -> IO (Either SomeException SteamGames)
 getSteamGames sessId =
     try $ request "http://www.steamgifts.com/sync" "GET" [] sessId f
   where
     f = parse . fromDocument . parseLBS
 
 isAlreadyOwned :: SteamGames -> GiveawayEntry -> Bool
-isAlreadyOwned sg ge = HS.member (T.pack $ gameTitle ge) (sg^.owned)
+isAlreadyOwned sg ge = HS.member (gameTitle ge) (sg^.owned)
 
 isInWishlist :: SteamGames -> GiveawayEntry -> Bool
-isInWishlist sg ge = HS.member (T.pack $ gameTitle ge) (sg^.wishlist)
+isInWishlist sg ge = HS.member (gameTitle ge) (sg^.wishlist)

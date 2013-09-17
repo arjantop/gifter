@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Gifter.ConfigSpec (
     main,
     spec
