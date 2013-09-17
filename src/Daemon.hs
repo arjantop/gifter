@@ -135,9 +135,9 @@ pollGiveawayEntries = do
     case gse of
         Left e -> do
             cfg <- ask
-            logTimeM "Error getting latest giveaways"
-            logTimeM . show $ e
-            delayM (cfg ^. pollDelay)
+            logTime "Error getting latest giveaways"
+            logTime . show $ e
+            delay (cfg ^. pollDelay)
             pollGiveawayEntries
         Right gs -> handleEntries gs
   where
@@ -146,13 +146,14 @@ pollGiveawayEntries = do
         gc <- gets (^.giveawayChannel)
         lg <- gets (^.lastChecked)
         let newGs = maybe gs (\u -> L.takeWhile ((u /=) . GE.url) gs) lg
+            numGs = length newGs
             gUrl = GE.url `fmap` headMay newGs
             newLs = gUrl `mplus` lg
         when (isJust gUrl) . liftIO $
             writeLastChecked (lastCheckedFile cfg) (fromJust $ newLs)
-        logTimeM $ "Got " ++ (show . length $ newGs) ++ " new giveaways"
+        logTimeWhen (numGs > 0) $ "Got " ++ (show numGs) ++ " new giveaways"
         liftIO $ atomically $ writeTChan gc (NewData newGs)
-        delayM (cfg ^. pollDelay)
+        delay (cfg ^. pollDelay)
         modify (set lastChecked newLs)
         pollGiveawayEntries
 
@@ -163,7 +164,8 @@ enterSelectedGiveaways gc cfg sg = do
     let filteredGs = filter (liftM2 (&&)
                                 (conditionsMatchAny (cfg^.enter) sg)
                                 (not . isAlreadyOwned sg)) gs
-    logTime $ "Trying to enter " ++ (show . length $ filteredGs) ++ " giveaways"
+        numFilGs = length filteredGs
+    logTimeWhen (numFilGs > 0) $ "Trying to enter " ++ (show numFilGs) ++ " giveaways"
     enterAll filteredGs
     delay $ cfg^.pollDelay
     enterSelectedGiveaways gc cfg sg
@@ -179,7 +181,7 @@ tryEnterGiveaway gi@GiveawayEntry{url=url} = do
     cfg <- ask
     r <- gets (^.retriesInfo)
     if r == 0
-        then logTimeM $ "No retries left. Giving up on " ++ url^.unpacked
+        then logTime $ "No retries left. Giving up on " ++ url^.unpacked
         else do
             res <- liftIO $ getGiveaway url cfg
             either handleFailure handleSuccess $ res
@@ -188,12 +190,12 @@ tryEnterGiveaway gi@GiveawayEntry{url=url} = do
         | canEnter g = enterGiveawayRetry g
         | otherwise =
             let strStatus = show . status $ g
-            in logTimeM $ "Wrong status " ++ strStatus ++ " for " ++ url^.unpacked
+            in logTime $ "Wrong status " ++ strStatus ++ " for " ++ url^.unpacked
     handleFailure e
-        | isRemoved e = logTimeM $ "Removed: " ++ url^.unpacked
+        | isRemoved e = logTime $ "Removed: " ++ url^.unpacked
         | otherwise = do
-            logTimeM $ "Error getting info: " ++ url^.unpacked
-            (asks $ view retryDelay) >>= delayM
+            logTime $ "Error getting info: " ++ url^.unpacked
+            (asks $ view retryDelay) >>= delay
             decRetriesInfo
             tryEnterGiveaway gi
 
@@ -201,35 +203,32 @@ enterGiveawayRetry :: Giveaway -> TaskM EnterState ()
 enterGiveawayRetry g@Giveaway{..} = do
     r <- gets (^.retriesEnter)
     if r == 0
-        then logTimeM $ "No retries left. Unknown status for " ++ url^.unpacked
+        then logTime $ "No retries left. Unknown status for " ++ url^.unpacked
         else do
             cfg <- ask
             isEntered <- liftIO $ enterGiveaway g cfg
             case isEntered of
-                Right True -> logTimeM $ "Entered: " ++ url^.unpacked
+                Right True -> logTime $ "Entered: " ++ url^.unpacked
                 _ -> do
-                    logTimeM $ "Error entering: " ++ url^.unpacked
-                    delayM (cfg^.retryDelay)
+                    logTime $ "Error entering: " ++ url^.unpacked
+                    delay (cfg^.retryDelay)
                     decRetriesEnter
                     enterGiveawayRetry g
-
-delay :: Integer -> IO ()
-delay ms = threadDelay (fromIntegral ms * 1000000)
-
-delayM :: (MonadIO m) => Integer -> m ()
-delayM = liftIO . delay
 
 conditionsMatchAny :: [EntryCondition] -> SteamGames-> GiveawayEntry -> Bool
 conditionsMatchAny cnd sg g = any (match g sg) cnd
 
-logTime :: String -> IO ()
+delay :: (MonadIO m) => Integer -> m ()
+delay ms = liftIO $ threadDelay (fromIntegral ms * 1000000)
+
+logTime :: (MonadIO m) => String -> m ()
 logTime s = do
-    utcTime <- getCurrentTime
-    tz <- getTimeZone utcTime
+    utcTime <- liftIO $ getCurrentTime
+    tz <- liftIO $ getTimeZone utcTime
     let time = utcToLocalTime tz utcTime
     let formattedTime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" time
-    void $ printf "[%s] %s" formattedTime s
-    putStrLn ""
+    liftIO . void $ printf "[%s] %s" formattedTime s
+    liftIO $ putStrLn ""
 
-logTimeM :: (MonadIO m) => String -> m ()
-logTimeM = liftIO . logTime
+logTimeWhen :: (MonadIO m) => Bool -> String -> m ()
+logTimeWhen cond msg = when cond $ logTime msg
