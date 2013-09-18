@@ -20,7 +20,7 @@ parse c = SteamGames (process ownedList) (process wishList)
   where
     parseData query = fmap (toStrict . innerHtml) . queryT query
     d = parseData [jq| div.row div.code |] c
-    (ownedList, rest) = span (not . T.isInfixOf "1. ") d
+    (ownedList, rest) = break (T.isInfixOf "1. ") d
     wishlistRaw = takeWhile (not . T.isPrefixOf "<a href") rest
     wishList = map (T.tail . T.dropWhile (/= ' ')) wishlistRaw
     process = HS.fromList . map decodeHtml

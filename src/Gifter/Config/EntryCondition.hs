@@ -1,6 +1,14 @@
-{-# LANGUAGE OverloadedStrings,RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
 module Gifter.Config.EntryCondition (
     EntryCondition(..),
+    games,
+    notGames,
+    keywords,
+    notKeywords,
+    copies,
+    points,
+    wishlist,
+    emptyEntryCondition,
     OrdCond(..),
     match
 ) where
@@ -15,8 +23,8 @@ import Control.Lens
 import Control.Monad
 import Control.Applicative
 
-import Gifter.GiveawayEntry as GE
-import qualified Gifter.SteamGames as SG
+import Gifter.GiveawayEntry
+import Gifter.SteamGames
 
 data OrdCond a = Eq a
                | Lt a
@@ -36,14 +44,26 @@ withOrdCond obj key = parse (sfx `zip` dcons)
                        Just v -> (snd s `fmap`) `fmap` parseJSON v
 
 data EntryCondition = EntryCondition {
-        games :: Maybe [T.Text],
-        notGames :: Maybe [T.Text],
-        keywords :: Maybe [T.Text],
-        notKeywords :: Maybe [T.Text],
-        points :: Maybe (OrdCond Integer),
-        copies :: Maybe (OrdCond Integer),
-        wishlist :: Bool
+        _games :: Maybe [T.Text],
+        _notGames :: Maybe [T.Text],
+        _keywords :: Maybe [T.Text],
+        _notKeywords :: Maybe [T.Text],
+        _points :: Maybe (OrdCond Integer),
+        _copies :: Maybe (OrdCond Integer),
+        _wishlist :: Bool
     } deriving (Show, Eq)
+makeLenses ''EntryCondition
+
+emptyEntryCondition :: EntryCondition
+emptyEntryCondition = EntryCondition {
+        _games = Nothing,
+        _notGames = Nothing,
+        _keywords = Nothing,
+        _notKeywords = Nothing,
+        _points = Nothing,
+        _copies = Nothing,
+        _wishlist = False
+    }
 
 instance FromJSON EntryCondition where
     parseJSON (Object v) = EntryCondition <$>
@@ -56,30 +76,31 @@ instance FromJSON EntryCondition where
                            v .:? "wishlist" .!= False
     parseJSON _          = mzero
 
-match :: GiveawayEntry -> SG.SteamGames -> EntryCondition -> Bool
-match ge sg EntryCondition{..} = and [
-        c (matchGames ge) games,
-        c (matchNotGamed ge) notGames,
-        c (matchKeywords ge) keywords,
-        c (matchNotKeywords ge) notKeywords,
-        c (matchOrdCond ge GE.points) points,
-        c (matchOrdCond ge GE.copies) copies,
-        matchWishlist wishlist
+match :: GiveawayEntry -> SteamGames -> EntryCondition -> Bool
+match ge sg ec = and [
+        c matchGames (ec^.games),
+        c matchNotGamed (ec^.notGames),
+        c matchKeywords (ec^.keywords),
+        c matchNotKeywords (ec^.notKeywords),
+        c (matchOrdCond gCopies) (ec^.copies),
+        c (matchOrdCond gPoints) (ec^.points),
+        matchWishlist (ec^.wishlist)
     ]
   where 
     c = maybe True
-    matchGames GiveawayEntry{gameTitle=gameTitle} gs = gameTitle `elem` gs
-    matchNotGamed g = not . matchGames g
-    matchKeywords GiveawayEntry{gameTitle=gameTitle} ks =
-        let gameTitleLower = T.toLower gameTitle
+    matchGames gs = (ge^.gameTitle) `elem` gs
+    matchNotGamed = not . matchGames
+    matchKeywords ks =
+        let gameTitleLower = T.toLower $ ge^.gameTitle
         in any (matchKeyword gameTitleLower) ks
     matchKeyword gt k = all (`T.isInfixOf` gt) (T.words k)
-    matchNotKeywords g = not . matchKeywords g
+    matchNotKeywords = not . matchKeywords
     matchWishlist False = True
-    matchWishlist True = gameTitle ge `HS.member` (sg^.SG.wishlist)
-    matchOrdCond g f oc = case oc of
-                             Eq x -> f g == x
-                             Lt x -> f g < x
-                             Lte x -> f g <= x
-                             Gt x -> f g > x
-                             Gte x -> f g >= x
+    matchWishlist True = (ge^.gameTitle) `HS.member` (sg^.sWishlist)
+    matchOrdCond f oc =
+        case oc of
+            Eq x -> ge^.f == x
+            Lt x -> ge^.f < x
+            Lte x -> ge^.f <= x
+            Gt x -> ge^.f > x
+            Gte x -> ge^.f >= x

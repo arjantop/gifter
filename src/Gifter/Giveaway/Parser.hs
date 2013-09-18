@@ -72,7 +72,7 @@ parseEntries c = (fmap (digitsOnly . T.unpack) .
                     parseData [jq| div.rounded.entries |] $ c) >>= readMay
 
 parseFormKey :: Cursor -> Maybe (Maybe T.Text)
-parseFormKey c = Just $ parseAttribute [jq| input[name=form_key] |] $ c
+parseFormKey c = Just $ parseAttribute [jq| input[name=form_key] |] c
 
 digitsOnly :: String -> String
 digitsOnly = filter (`elem` ['0'..'9'])

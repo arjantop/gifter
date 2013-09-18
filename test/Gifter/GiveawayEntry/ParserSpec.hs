@@ -19,28 +19,28 @@ main = hspec spec
 rssEntries :: [GiveawayEntry]
 rssEntries = [
         GiveawayEntry {
-            url = "http://www.steamgifts.com/giveaway/niIHw/primordia",
-            gameTitle = "Humble Deep Silver Bundle (Above Average)",
-            copies = 1,
-            points = 10
+            _gUrl = "http://www.steamgifts.com/giveaway/niIHw/primordia",
+            _gameTitle = "Humble Deep Silver Bundle (Above Average)",
+            _gCopies = 1,
+            _gPoints = 10
         },
         GiveawayEntry {
-            url = "http://www.steamgifts.com/giveaway/niIHw/primordia",
-            gameTitle = "Humble Deep Silver Bundle (Above Average)",
-            copies = 5,
-            points = 8
+            _gUrl = "http://www.steamgifts.com/giveaway/niIHw/primordia",
+            _gameTitle = "Humble Deep Silver Bundle (Above Average)",
+            _gCopies = 5,
+            _gPoints = 8
         },
         GiveawayEntry {
-            url = "http://www.steamgifts.com/giveaway/Nq3zH/fortix",
-            gameTitle = "Command & Conquer",
-            copies = 5,
-            points = 1
+            _gUrl = "http://www.steamgifts.com/giveaway/Nq3zH/fortix",
+            _gameTitle = "Command & Conquer",
+            _gCopies = 5,
+            _gPoints = 1
         },
         GiveawayEntry {
-            url = "http://www.steamgifts.com/giveaway/VLQTR/crysis-2-maximum-edition",
-            gameTitle = "Crysis 2 - Maximum Edition",
-            copies = 1,
-            points = 30
+            _gUrl = "http://www.steamgifts.com/giveaway/VLQTR/crysis-2-maximum-edition",
+            _gameTitle = "Crysis 2 - Maximum Edition",
+            _gCopies = 1,
+            _gPoints = 30
         }
     ]
 

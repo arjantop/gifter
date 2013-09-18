@@ -1,6 +1,10 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Gifter.Giveaway (
     Giveaway(..),
+    url,
+    status,
+    entries,
+    formKey,
     GiveawayStatus(..),
     GiveawayError(..),
     canEnter,
@@ -34,7 +38,7 @@ data GiveawayError = HttpError CH.HttpException
                    | ResponseParseError DataError
 
 canEnter :: Giveaway -> Bool
-canEnter Giveaway {status = Open _} = True
+canEnter Giveaway {_status = Open _} = True
 canEnter _                          = False
 
 isRemoved :: GiveawayError -> Bool
@@ -46,11 +50,13 @@ getGiveaway gurl cfg =
     handleResponse $ request gurl "GET" [] (cfg^.sessionId) (parseResponse gurl)
 
 enterGiveaway :: Giveaway -> Config -> IO (Either GiveawayError Bool)
-enterGiveaway Giveaway{formKey=formKey,url=url} cfg = do
-    let key = fromMaybe "" formKey
-        params = [("enter_giveaway", "1"), ("form_key", SC.pack . T.unpack $ key)]
-    r <- handleResponse $ request url "POST" params (cfg^.sessionId) (parseResponse url)
-    return . right ((==Entered) . status) $ r
+enterGiveaway g cfg = do
+    let key = fromMaybe "" (g^.formKey)
+        params = [("enter_giveaway", "1"),
+                  ("form_key", SC.pack . T.unpack $ key)]
+        u = g^.url
+    r <- handleResponse $ request u "POST" params (cfg^.sessionId) (parseResponse u)
+    return . right ((==Entered) . view status) $ r
 
 parseResponse :: T.Text -> SL.ByteString -> Either DataError Giveaway
 parseResponse gurl = parse gurl . fromDocument . parseLBS

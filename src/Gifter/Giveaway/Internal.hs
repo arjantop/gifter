@@ -1,15 +1,11 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Gifter.Giveaway.Internal where
+
+import Control.Lens
 
 import qualified Data.Text as T
 
-data Giveaway = Giveaway {
-                url     :: T.Text
-              , status  :: GiveawayStatus
-              , entries :: Integer
-              , formKey :: Maybe T.Text
-              } deriving (Show, Eq)
-
-type Points = Int
+type Points = Integer
 
 data GiveawayStatus =
           Open Points
@@ -22,3 +18,11 @@ data GiveawayStatus =
         | ComingSoon
         | NotEnoughPoints
         deriving (Show, Eq)
+
+data Giveaway = Giveaway {
+                _url     :: T.Text
+              , _status  :: GiveawayStatus
+              , _entries :: Integer
+              , _formKey :: Maybe T.Text
+              } deriving (Show, Eq)
+makeLenses ''Giveaway

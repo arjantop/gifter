@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Gifter.SteamGames (
     SteamGames,
-    owned,
-    wishlist,
+    sOwned,
+    sWishlist,
     getSteamGames,
     isAlreadyOwned,
     isInWishlist
@@ -29,7 +29,7 @@ getSteamGames sessId =
     f = parse . fromDocument . parseLBS
 
 isAlreadyOwned :: SteamGames -> GiveawayEntry -> Bool
-isAlreadyOwned sg ge = HS.member (gameTitle ge) (sg^.owned)
+isAlreadyOwned sg ge = HS.member (ge^.gameTitle) (sg^.sOwned)
 
 isInWishlist :: SteamGames -> GiveawayEntry -> Bool
-isInWishlist sg ge = HS.member (gameTitle ge) (sg^.wishlist)
+isInWishlist sg ge = HS.member (ge^.gameTitle) (sg^.sWishlist)

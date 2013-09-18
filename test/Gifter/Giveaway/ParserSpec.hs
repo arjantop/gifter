@@ -57,74 +57,74 @@ spec =
     describe "parse" $ do
         it "should parse giveaway with NoLogin status and 236 entries" $ do
             let g = Giveaway {
-                        url = "cogs/url",
-                        status = NoLogin,
-                        entries = 236,
-                        formKey = Nothing
+                        _url = "cogs/url",
+                        _status = NoLogin,
+                        _entries = 236,
+                        _formKey = Nothing
                     }
             fmap (parse "cogs/url") loadCogsNoLogin `shouldReturn` Right g
         it "should parse givaway with AlreadyOwn status and 247 entries" $ do
             let g = Giveaway {
-                        url = "ds/url",
-                        status = AlreadyOwn,
-                        entries = 247,
-                        formKey = Just "c0235212cf41b36612029de779bf5261"
+                        _url = "ds/url",
+                        _status = AlreadyOwn,
+                        _entries = 247,
+                        _formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap (parse "ds/url") loadDeadSpaceAlreadyOwn `shouldReturn` Right g
         it "should parse givaway with Closed status and 3459 entries" $ do
             let g = Giveaway {
-                        url = "dn/url",
-                        status = Closed,
-                        entries = 3459,
-                        formKey = Just "c0235212cf41b36612029de779bf5261"
+                        _url = "dn/url",
+                        _status = Closed,
+                        _entries = 3459,
+                        _formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap (parse "dn/url") loadDukeNukemOpen `shouldReturn` Right g
         it "should parse givaway with ContributorsOnly status and 226 entries" $ do
             let g = Giveaway {
-                        url = "39s/url",
-                        status = ContributorsOnly,
-                        entries = 226,
-                        formKey = Just "c0235212cf41b36612029de779bf5261"
+                        _url = "39s/url",
+                        _status = ContributorsOnly,
+                        _entries = 226,
+                        _formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap (parse "39s/url") loadThe39StepsContributosOnly `shouldReturn` Right g
         it "should parse givaway with Open status and 28 entries" $ do
             let g = Giveaway {
-                        url = "ra3",
-                        status = Open 20,
-                        entries = 28,
-                        formKey = Just "c0235212cf41b36612029de779bf5261"
+                        _url = "ra3",
+                        _status = Open 20,
+                        _entries = 28,
+                        _formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap (parse "ra3") loadRedAlert3Open `shouldReturn` Right g
         it "should parse givaway with Entered status and 3034 entries" $ do
             let g = Giveaway {
-                        url = "fez",
-                        status = Entered,
-                        entries = 3034,
-                        formKey = Just "c0235212cf41b36612029de779bf5261"
+                        _url = "fez",
+                        _status = Entered,
+                        _entries = 3034,
+                        _formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap (parse "fez") loadFezEntered `shouldReturn` Right g
         it "should parse givaway with MissingBaseGame status and 284 entries" $ do
             let g = Giveaway {
-                        url = "xcom",
-                        status = MissingBaseGame,
-                        entries = 284,
-                        formKey = Just "c0235212cf41b36612029de779bf5261"
+                        _url = "xcom",
+                        _status = MissingBaseGame,
+                        _entries = 284,
+                        _formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap (parse "xcom") loadXcomDlcMissingBaseGame `shouldReturn` Right g
         it "should parse givaway with ComingSoon status" $ do
             let g = Giveaway {
-                        url = "me",
-                        status = ComingSoon,
-                        entries = 0,
-                        formKey = Just "c0235212cf41b36612029de779bf5261"
+                        _url = "me",
+                        _status = ComingSoon,
+                        _entries = 0,
+                        _formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap (parse "me") loadMirrorsEdgeComingSoon `shouldReturn` Right g
         it "should parse givaway with NotEnoughpoints status and 2485 entries" $ do
             let g = Giveaway {
-                        url = "de",
-                        status = NotEnoughPoints,
-                        entries = 2485,
-                        formKey = Just "c0235212cf41b36612029de779bf5261"
+                        _url = "de",
+                        _status = NotEnoughPoints,
+                        _entries = 2485,
+                        _formKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap (parse "de") loadDeadlightNotEnoughPoints `shouldReturn` Right g
         it "shoud return error status GiveawayRemoved if the giveaway has been removed" $ do

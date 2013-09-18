@@ -71,6 +71,6 @@ readConfig fp = do
             res <- decode `liftM` content
             case res of
                 Nothing -> return . Left $ ConfigParseError
-                Just cfg -> return . Right $ cfg & cfgDir .~ (dropFileName fp)
+                Just cfg -> return . Right $ cfg & cfgDir .~ dropFileName fp
         else return . Left $ MissingFile fp
   where content = runResourceT $ CB.sourceFile fp $$ CB.sinkLbs

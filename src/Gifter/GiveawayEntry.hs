@@ -1,5 +1,9 @@
 module Gifter.GiveawayEntry (
     GiveawayEntry(..),
+    gUrl,
+    gameTitle,
+    gCopies,
+    gPoints,
     getEntries
 ) where
 

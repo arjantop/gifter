@@ -25,12 +25,12 @@ spec =
     describe "parse" $ do
         it "should parse all currently owned and wishlist games" $ do
             let sg = SteamGames {
-                        _owned = HS.fromList $
+                        _sOwned = HS.fromList
                                      ["Command & Conquer",
                                       "Amnesia: The Dark Descent",
                                       "Garry's Mod",
                                       "Anomaly 2"],
-                        _wishlist = HS.fromList $
+                        _sWishlist = HS.fromList
                                         ["Tomb Raider",
                                          "Cubemen 2",
                                          "Kentucky Route Zero"]
