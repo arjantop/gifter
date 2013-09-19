@@ -57,7 +57,7 @@ data ConfigError = MissingFile FilePath
                  deriving (Show, Eq)
 
 defaultDir :: IO String
-defaultDir = (`combine` ".config/gifter/") `liftM` getHomeDirectory
+defaultDir = getAppUserDataDirectory "gifter"
 
 defaultLocation :: IO String
 defaultLocation =
