@@ -24,5 +24,6 @@ data Giveaway = Giveaway {
               , _status  :: GiveawayStatus
               , _entries :: Integer
               , _formKey :: Maybe T.Text
+              , _accPoints :: Integer
               } deriving (Show, Eq)
 makeLenses ''Giveaway

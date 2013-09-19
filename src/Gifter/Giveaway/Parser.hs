@@ -14,6 +14,7 @@ import Text.XML.Selector.Types (JQSelector)
 import qualified Data.Text as T
 import Data.Text.Lazy (toStrict)
 import Data.Maybe (fromMaybe)
+import Data.List
 
 import Safe
 
@@ -42,7 +43,8 @@ parseGiveaway u c = Giveaway <$>
             pure u <*>
             parseStatus c <*>
             parseEntries c `mplus` Just 0 <*>
-            parseFormKey c
+            parseFormKey c <*>
+            parseAccPoints c `mplus` Just 0
 
 parseData :: [JQSelector] -> Cursor -> Maybe T.Text
 parseData query = fmap (toStrict . innerHtml) . headMay . queryT query
@@ -73,6 +75,12 @@ parseEntries c = (fmap (digitsOnly . T.unpack) .
 
 parseFormKey :: Cursor -> Maybe (Maybe T.Text)
 parseFormKey c = Just $ parseAttribute [jq| input[name=form_key] |] c
+
+parseAccPoints :: Cursor -> Maybe Integer
+parseAccPoints c = let q = [jq| div#navigation a.arrow |]
+                       nav = fmap (toStrict . innerHtml) . queryT q $ c
+                       acc = find ("Account" `T.isPrefixOf`) nav
+                   in (fmap (digitsOnly . T.unpack) acc) >>= readMay
 
 digitsOnly :: String -> String
 digitsOnly = filter (`elem` ['0'..'9'])
