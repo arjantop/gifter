@@ -96,3 +96,28 @@ spec =
                 ge2 = withTitle "witk Key"
             match ge sg ec `shouldBe` False
             match ge2 sg ec `shouldBe` False
+        it "should match when any of the conditions succeed" $ do
+            let orSubpart = eec & keywords .~ Just ["key"]
+                                & games .~ Just ["Game title"]
+                ec = eec & orCond .~ Just orSubpart
+            match (withTitle "Title Key") sg ec `shouldBe` True
+            match (withTitle "Game title") sg ec `shouldBe` True
+            match (withTitle "Something") sg ec `shouldBe` False
+        it "should match when all of the conditions succeed" $ do
+            let andSubpart = eec & keywords .~ Just ["title"]
+                                & games .~ Just ["Game title"]
+                ec = eec & andCond .~ Just andSubpart
+            match (withTitle "Title Key") sg ec `shouldBe` False
+            match (withTitle "Game title") sg ec `shouldBe` True
+        it "should match nested conditions correctly" $ do
+            let andSubpart = eec & copies .~ Just (Gt 3)
+                                 & points .~ Just (Lte 10)
+                orSubpart = eec & games .~ Just ["Game title"]
+                                & andCond .~ Just andSubpart
+                ec = eec & points .~ Just (Gt 3)
+                         & orCond .~ Just orSubpart
+                ge1 = withTitle "Some title" & gCopies .~ 5
+                                             & gPoints .~ 10
+                ge2 = withTitle "Game title" & gPoints .~ 12
+            match ge1 sg ec `shouldBe` True
+            match ge2 sg ec `shouldBe` True

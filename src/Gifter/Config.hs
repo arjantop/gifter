@@ -56,10 +56,10 @@ data ConfigError = MissingFile FilePath
                  | ConfigParseError
                  deriving (Show, Eq)
 
-defaultDir :: IO String
+defaultDir :: IO FilePath
 defaultDir = getAppUserDataDirectory "gifter"
 
-defaultLocation :: IO String
+defaultLocation :: IO FilePath
 defaultLocation =
     (`combine` "config.json") `liftM` defaultDir
 

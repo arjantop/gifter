@@ -8,6 +8,8 @@ module Gifter.Config.EntryCondition (
     copies,
     points,
     wishlist,
+    andCond,
+    orCond,
     emptyEntryCondition,
     OrdCond(..),
     match
@@ -50,7 +52,9 @@ data EntryCondition = EntryCondition {
         _notKeywords :: Maybe [T.Text],
         _points :: Maybe (OrdCond Integer),
         _copies :: Maybe (OrdCond Integer),
-        _wishlist :: Bool
+        _wishlist :: Bool,
+        _andCond :: Maybe EntryCondition,
+        _orCond :: Maybe EntryCondition
     } deriving (Show, Eq)
 makeLenses ''EntryCondition
 
@@ -62,7 +66,9 @@ emptyEntryCondition = EntryCondition {
         _notKeywords = Nothing,
         _points = Nothing,
         _copies = Nothing,
-        _wishlist = False
+        _wishlist = False,
+        _andCond = Nothing,
+        _orCond = Nothing
     }
 
 instance FromJSON EntryCondition where
@@ -73,21 +79,29 @@ instance FromJSON EntryCondition where
                            v .:? "not.keywords" <*>
                            v `withOrdCond` "points" <*>
                            v `withOrdCond` "copies" <*>
-                           v .:? "wishlist" .!= False
+                           v .:? "wishlist" .!= False <*>
+                           v .:? "and" <*>
+                           v .:? "or"
     parseJSON _          = mzero
 
 match :: GiveawayEntry -> SteamGames -> EntryCondition -> Bool
-match ge sg ec = and [
+match = matchCond and
+
+matchCond :: ([Bool] -> Bool) -> GiveawayEntry -> SteamGames -> EntryCondition -> Bool
+matchCond bo ge sg ec = bo [
         c matchGames (ec^.games),
         c matchNotGamed (ec^.notGames),
         c matchKeywords (ec^.keywords),
         c matchNotKeywords (ec^.notKeywords),
         c (matchOrdCond gCopies) (ec^.copies),
         c (matchOrdCond gPoints) (ec^.points),
-        matchWishlist (ec^.wishlist)
+        matchWishlist (ec^.wishlist),
+        c (matchCond or ge sg) (ec^.orCond),
+        c (matchCond and ge sg) (ec^.andCond)
     ]
   where 
-    c = maybe True
+    defVal = not $ bo [True, False]
+    c = maybe defVal
     matchGames gs = (ge^.gameTitle) `elem` gs
     matchNotGamed = not . matchGames
     matchKeywords ks =
@@ -95,7 +109,7 @@ match ge sg ec = and [
         in any (matchKeyword gameTitleLower) ks
     matchKeyword gt k = all (`T.isInfixOf` gt) (T.words k)
     matchNotKeywords = not . matchKeywords
-    matchWishlist False = True
+    matchWishlist False = defVal
     matchWishlist True = (ge^.gameTitle) `HS.member` (sg^.sWishlist)
     matchOrdCond f oc =
         case oc of

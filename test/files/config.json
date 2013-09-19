@@ -24,6 +24,16 @@
             "not.keywords" : ["key"],
             "points.lt": 10,
             "copies.gte": 2
+        },
+        {
+            "keywords": ["title"],
+            "or": {
+                "and": {
+                    "points.lt": 20,
+                    "copies.gt": 2
+                },
+                "games": ["Game Title"]
+            }
         }
     ]
 }
