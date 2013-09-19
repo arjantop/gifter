@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Main (
     main
 ) where
@@ -15,7 +16,11 @@ import System.IO
 import System.Locale
 import System.Directory
 import System.FilePath.Posix
+import System.Console.CmdArgs
+import System.Environment
 
+import Data.Data ()
+import Data.Typeable ()
 import Data.Conduit
 import Data.Conduit.Binary
 import Data.Time.Clock
@@ -65,15 +70,36 @@ decRetriesInfo = modify (over retriesInfo pred)
 decRetriesEnter :: TaskM EnterState ()
 decRetriesEnter = modify (over retriesEnter pred)
 
+data GifterdArgs = GifterdArgs { _config :: String }
+                     deriving (Show, Data, Typeable)
+makeLenses ''GifterdArgs
+
+gifterArgs :: String -> String -> GifterdArgs
+gifterArgs defCfg progName = GifterdArgs {
+                        _config = defCfg &= help "Config file location"
+                                         &= explicit
+                                         &= name "config"
+                                         &= typFile
+                                         &= groupname "Program options"
+                    } &= summary "Simple program for automatic giveaway entry on steamgifts.com"
+                      &= program progName
+                      &= helpArg [explicit,
+                                  name "h",
+                                  name "help",
+                                  groupname "Other"]
+                      &= versionArg [ignore]
+
 main :: IO ()
 main = do
     hSetBuffering stdout NoBuffering
-    cloc <- defaultLocation
-    ecfg <- readConfig cloc
+    defCfg <- defaultLocation
+    progName <- getProgName
+    cargs <- cmdArgs $ gifterArgs defCfg progName
+    ecfg <- readConfig (cargs^.config)
     case ecfg of
         Right cfg -> tryGetSteamGames cfg
-        Left (MissingFile fp) -> logTime $ "Missing config file: " ++ fp
-        Left ConfigParseError -> logTime "Config parse error"
+        Left (MissingFile fp) -> putStrLn $ "Missing config file: " ++ fp
+        Left ConfigParseError -> putStrLn "Config parse error"
 
 tryGetSteamGames :: Config -> IO ()
 tryGetSteamGames cfg = do
