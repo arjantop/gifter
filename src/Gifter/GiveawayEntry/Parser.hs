@@ -3,6 +3,7 @@ module Gifter.GiveawayEntry.Parser (
     parseEntries
 ) where
 
+import Control.Lens
 import Control.Applicative ((<$>),(<*>))
 import Control.Monad
 
@@ -12,7 +13,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 
 import Text.XML.Stream.Parse
-import Text.Regex.PCRE
+import Text.Regex.TDFA
 
 import Safe
 
@@ -40,14 +41,22 @@ parseItem = tagName "item" ignoreAttrs $ \_ -> do
     _ <- skipTag "description"
     _ <- skipTag "origLink"
     return $ GiveawayEntry <$> guid <*> t <*> c <*> p
+
+type RegexResult = (String, String, String, [String])
+
+parseTitle :: String -> (Maybe T.Text, Maybe Integer, Maybe Integer)
+parseTitle rt = matches & _1 %~ toT
+                        & _2 %~ ((`mplus` Just 1) . (>>= readMay))
+                        & _3 %~ (>>=readMay)
   where
-    parseTitle rt
-        = let (_, _, _, matches) = rt =~ pat :: (String, String, String, [String])
-              c = atMay matches 2 >>= readMay
-          in (toT $ atMay matches 0,
-              c `mplus` Just 1,
-              atMay matches 3 >>= readMay)
-    pat = "^(.+?) (\\(([0-9]+) Copies\\) )?\\(([0-9]+)P\\)$" :: String
+    matches = if rt =~ patC
+                then let ms = view _4 (rt =~ patC :: RegexResult)
+                     in (atMay ms 0, atMay ms 1, atMay ms 2)
+                else let ms = view _4 (rt =~ patN :: RegexResult)
+                     in (atMay ms 0, Nothing, atMay ms 1)
+    pat s = "^(.+) " ++ s ++ "\\(([0-9]+)P\\)$" :: String
+    patN = pat ""
+    patC = pat "\\(([0-9]+) Copies\\) "
     toT = (T.pack `fmap`)
 
 skipUntilTag :: Monad m => T.Text -> ConduitM Event o m [()]
