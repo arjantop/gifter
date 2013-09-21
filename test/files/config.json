@@ -23,7 +23,8 @@
             "keywords": ["word"],
             "not.keywords" : ["key"],
             "points.lt": 10,
-            "copies.gte": 2
+            "copies.gte": 2,
+            "accpoints.gt": 100
         },
         {
             "keywords": ["title"],

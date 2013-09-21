@@ -23,7 +23,8 @@ request gurl m qs sessionId f = do
     let jar = Just $ CH.createCookieJar [sessionCookie (T.unpack sessionId)]
         reqWithCookies = req' {
                 cookieJar = jar,
-                method = m
+                method = m,
+                responseTimeout = Just 10000000
             }
         req = if m == "POST"
                   then CH.urlEncodedBody qs reqWithCookies

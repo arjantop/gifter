@@ -5,10 +5,12 @@ module Gifter.Giveaway (
     status,
     entries,
     formKey,
+    accPoints,
     GiveawayStatus(..),
     GiveawayError(..),
     canEnter,
     isRemoved,
+    isEntered,
     getGiveaway,
     enterGiveaway
 ) where
@@ -45,18 +47,21 @@ isRemoved :: GiveawayError -> Bool
 isRemoved (ResponseParseError GiveawayRemoved) = True
 isRemoved _                                   = False
 
+isEntered :: Giveaway -> Bool
+isEntered = (==Entered) . view status
+
 getGiveaway :: T.Text -> Config -> IO (Either GiveawayError Giveaway)
 getGiveaway gurl cfg =
     handleResponse $ request gurl "GET" [] (cfg^.sessionId) (parseResponse gurl)
 
-enterGiveaway :: Giveaway -> Config -> IO (Either GiveawayError Bool)
+enterGiveaway :: Giveaway -> Config -> IO (Either GiveawayError Giveaway)
 enterGiveaway g cfg = do
     let key = fromMaybe "" (g^.formKey)
         params = [("enter_giveaway", "1"),
                   ("form_key", SC.pack . T.unpack $ key)]
         u = g^.url
     r <- handleResponse $ request u "POST" params (cfg^.sessionId) (parseResponse u)
-    return . right ((==Entered) . view status) $ r
+    return r
 
 parseResponse :: T.Text -> SL.ByteString -> Either DataError Giveaway
 parseResponse gurl = parse gurl . fromDocument . parseLBS

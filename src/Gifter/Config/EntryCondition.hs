@@ -7,6 +7,7 @@ module Gifter.Config.EntryCondition (
     notKeywords,
     copies,
     points,
+    accP,
     wishlist,
     andCond,
     orCond,
@@ -20,6 +21,7 @@ import Data.Aeson.Types (Parser)
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HS
+import Data.Maybe
 
 import Control.Lens
 import Control.Monad
@@ -52,6 +54,7 @@ data EntryCondition = EntryCondition {
         _notKeywords :: Maybe [T.Text],
         _points :: Maybe (OrdCond Integer),
         _copies :: Maybe (OrdCond Integer),
+        _accP :: Maybe (OrdCond Integer),
         _wishlist :: Bool,
         _andCond :: Maybe EntryCondition,
         _orCond :: Maybe EntryCondition
@@ -66,6 +69,7 @@ emptyEntryCondition = EntryCondition {
         _notKeywords = Nothing,
         _points = Nothing,
         _copies = Nothing,
+        _accP = Nothing,
         _wishlist = False,
         _andCond = Nothing,
         _orCond = Nothing
@@ -79,25 +83,32 @@ instance FromJSON EntryCondition where
                            v .:? "not.keywords" <*>
                            v `withOrdCond` "points" <*>
                            v `withOrdCond` "copies" <*>
+                           v `withOrdCond` "accpoints" <*>
                            v .:? "wishlist" .!= False <*>
                            v .:? "and" <*>
                            v .:? "or"
     parseJSON _          = mzero
 
-match :: GiveawayEntry -> SteamGames -> EntryCondition -> Bool
+match :: GiveawayEntry -> SteamGames -> Maybe Integer -> EntryCondition -> Bool
 match = matchCond and
 
-matchCond :: ([Bool] -> Bool) -> GiveawayEntry -> SteamGames -> EntryCondition -> Bool
-matchCond bo ge sg ec = bo [
+matchCond :: ([Bool] -> Bool)
+          -> GiveawayEntry
+          -> SteamGames
+          -> Maybe Integer
+          -> EntryCondition
+          -> Bool
+matchCond bo ge sg acp ec = bo [
         c matchGames (ec^.games),
         c matchNotGamed (ec^.notGames),
         c matchKeywords (ec^.keywords),
         c matchNotKeywords (ec^.notKeywords),
-        c (matchOrdCond gCopies) (ec^.copies),
-        c (matchOrdCond gPoints) (ec^.points),
+        c (matchOrdCond $ ge^.gCopies) (ec^.copies),
+        c (matchOrdCond $ ge^.gPoints) (ec^.points),
+        c matchAccountPoints (ec^.accP),
         matchWishlist (ec^.wishlist),
-        c (matchCond or ge sg) (ec^.orCond),
-        c (matchCond and ge sg) (ec^.andCond)
+        c (matchCond or ge sg acp) (ec^.orCond),
+        c (matchCond and ge sg acp) (ec^.andCond)
     ]
   where 
     defVal = not $ bo [True, False]
@@ -111,10 +122,11 @@ matchCond bo ge sg ec = bo [
     matchNotKeywords = not . matchKeywords
     matchWishlist False = defVal
     matchWishlist True = (ge^.gameTitle) `HS.member` (sg^.sWishlist)
-    matchOrdCond f oc =
+    matchAccountPoints oc = fromMaybe False $ (flip matchOrdCond oc) `fmap` acp
+    matchOrdCond v oc =
         case oc of
-            Eq x -> ge^.f == x
-            Lt x -> ge^.f < x
-            Lte x -> ge^.f <= x
-            Gt x -> ge^.f > x
-            Gte x -> ge^.f >= x
+            Eq x -> v == x
+            Lt x -> v < x
+            Lte x -> v <= x
+            Gt x -> v > x
+            Gte x -> v >= x

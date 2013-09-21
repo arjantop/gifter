@@ -35,7 +35,8 @@ spec = do
                             & keywords .~ Just ["word"]
                             & notKeywords .~ Just ["key"]
                             & points .~ Just (Lt 10)
-                            & copies .~ Just (Gte 2),
+                            & copies .~ Just (Gte 2)
+                            & accP .~ Just (Gt 100),
                         emptyEntryCondition
                             & keywords .~ Just ["title"]
                             & orCond .~ Just (emptyEntryCondition
