@@ -3,6 +3,7 @@ module Gifter.Network (
     request
 ) where
 
+import Network (withSocketsDo)
 import qualified Network.HTTP.Conduit as CH
 import Network.HTTP.Conduit (Request(..),Cookie(..))
 
@@ -18,7 +19,7 @@ request :: T.Text
         -> T.Text
         -> (SL.ByteString -> a)
         -> IO a
-request gurl m qs sessionId f = do
+request gurl m qs sessionId f = withSocketsDo $ do
     req' <- CH.parseUrl (T.unpack gurl)
     let jar = Just $ CH.createCookieJar [sessionCookie (T.unpack sessionId)]
         reqWithCookies = req' {
