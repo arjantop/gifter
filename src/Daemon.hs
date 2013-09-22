@@ -187,9 +187,6 @@ enterSelectedGiveaways :: TChan (DataEvent GiveawayEntry) -> Config -> SteamGame
 enterSelectedGiveaways gc cfg sg cap = do
     NewData gs <- atomically $ readTChan gc
     let filteredGs = filter (not . isAlreadyOwned sg) gs
-    {-let filteredGs = filter (liftM2 (&&)-}
-                                {-(conditionsMatchAny (cfg^.enter) sg)-}
-                                {-(not . isAlreadyOwned sg)) gs-}
         numFilGs = length filteredGs
     logTimeWhen (numFilGs > 0) $ "Trying to enter " ++ show numFilGs ++ " giveaways"
     cap' <- enterAll cap filteredGs
@@ -205,7 +202,8 @@ enterSelectedGiveaways gc cfg sg cap = do
             then do
                 let es = EnterState (cfg^.maxRetries) (cfg^.maxRetries)
                 cap' <- runTaskM cfg es $ tryEnterGiveaway ge
-                logTimeWhen (isJust cap') $ "You have " ++ (show . fromJust $ cap') ++ " points left"
+                logTimeWhen (isJust cap' && cap /= cap') $
+                    "You have " ++ (show . fromJust $ cap') ++ " points"
                 delay (cfg^.requestDelay)
                 return cap'
             else return Nothing
@@ -228,7 +226,7 @@ tryEnterGiveaway ge = do
             let strStatus = show $ g^.status
             in do
                 logTime $ "Wrong status " ++ strStatus ++ " for " ++ ge^.gUrl.unpacked
-                return Nothing
+                return $ Just (g^.accPoints)
     handleFailure e
         | isRemoved e = do
             logTime $ "Removed: " ++ ge^.gUrl.unpacked
