@@ -50,6 +50,10 @@ readLastChecked fp = do
             return $ Just (TL.toStrict . decodeUtf8 $ c)
         else return Nothing
 
-writeLastChecked :: FilePath -> T.Text -> IO ()
-writeLastChecked fp s =
-    runResourceT $ sourceLbs (encodeUtf8 . TL.fromStrict $ s) $$ sinkFile fp
+writeLastChecked :: FilePath -> Maybe T.Text -> IO ()
+writeLastChecked fp ms =
+    case ms of
+        Just s -> runResourceT $ sourceLbs (toLBS s) $$ sinkFile fp
+        Nothing -> return ()
+  where
+    toLBS = encodeUtf8 . TL.fromStrict

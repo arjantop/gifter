@@ -5,6 +5,7 @@ module Main (
 ) where
 
 import Control.Lens
+import Control.Monad
 import Control.Concurrent.Async
 import Control.Concurrent.STM
 
@@ -78,10 +79,12 @@ tryGetSteamGames cfg = do
 startTasks :: Config -> SteamGames -> IO ()
 startTasks cfg sg = do
     giveChan <- newTChanIO
+    giveChan' <- newTChanIO
+    cfgChan <- newTChanIO
     lastChPer <- readLastChecked $ lastCheckedFile cfg
-    let ps = PollState lastChPer giveChan
-    r1 <- async (runTaskM cfg ps pollGiveawayEntries)
-    r2 <- async (enterSelectedGiveaways giveChan cfg sg Nothing)
+    r1 <- async (startTask cfg giveChan cfgChan lastChPer)
+    _ <- async (forever $ atomically (readTChan giveChan >>= \x -> writeTChan giveChan' (NewData [x])))
+    r2 <- async (enterSelectedGiveaways giveChan' cfg sg Nothing)
     res <- waitEitherCatchCancel r1 r2
     handleErrors res
   where
