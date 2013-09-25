@@ -1,14 +1,12 @@
 {-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving #-}
-module Gifter.Daemon.PollTask (
-    startTask
-) where
+module Gifter.Daemon.PollTask
+    ( startTask
+    ) where
 
 import Control.Lens
 import Control.Concurrent.STM
+import Control.Monad
 import Control.Monad.Trans
-import Control.Monad.Reader
-import Control.Monad.State
-import Control.Applicative
 import Control.Exception
 
 import qualified Data.Text as T
@@ -18,50 +16,11 @@ import Text.Printf
 
 import Safe
 
+import Gifter.Daemon.Task
 import Gifter.Daemon.Common
 import Gifter.Logging
 import Gifter.GiveawayEntry
 import Gifter.Config
-
-data TaskState s = TaskState {
-                   _config :: Config
-                 , _intState :: s
-                 }
-makeLenses ''TaskState
-
-newtype Task s a =
-    Task {
-        unTask :: StateT (TaskState s) IO a
-    } deriving ( Functor
-               , Applicative
-               , Monad
-               , MonadPlus
-               , MonadIO
-               , MonadState (TaskState s)
-               )
-
-runTask :: Config -> s -> Task s a -> IO a
-runTask cfg s m = evalStateT (unTask m) (TaskState cfg s)
-
-getConfig :: Task s Config
-getConfig = gets (^.config)
-
-replaceConfig :: Config -> Task s ()
-replaceConfig cfg = modify (set config cfg)
-
-maybeReplaceConfig :: Maybe Config -> Task s ()
-maybeReplaceConfig mcfg = case mcfg of
-    Just cfg -> replaceConfig cfg
-    _        -> return ()
-
-getIntState :: Task s s
-getIntState = gets (^.intState)
-
-getsIntState :: (s -> a) -> Task s a
-getsIntState f = getIntState >>= return . f
-
-modifyIntState :: (s -> s) -> Task s ()
-modifyIntState f = modify (over intState f)
 
 type TaskPS = Task PollTaskState
 
