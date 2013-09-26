@@ -6,13 +6,15 @@ module Gifter.Daemon.Common (
     delay,
     lastCheckedFile,
     readLastChecked,
-    writeLastChecked
+    writeLastChecked,
+    updateConfig
 ) where
 
 import Control.Lens
 import Control.Concurrent
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Concurrent.STM
 
 import System.FilePath
 import System.Directory
@@ -25,6 +27,8 @@ import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding
 
 import Gifter.Config
+import Gifter.Daemon.Task
+import Gifter.Daemon.ConfigWatcherTask
 
 newtype DataEvent a = NewData [a]
 
@@ -37,6 +41,12 @@ runTaskM cfg ts m = evalStateT (runReaderT (unPollM m) cfg) ts
 
 delay :: (MonadIO m) => Integer -> m ()
 delay ms = liftIO $ threadDelay (fromIntegral ms * 1000000)
+
+updateConfig :: (s -> ConfigVar) -> Task r s ()
+updateConfig f = do
+    cfgVar <- getsIntState f
+    cfg' <- liftIO . atomically $ readConfigVar cfgVar
+    replaceConfig cfg'
 
 lastCheckedFile :: Config -> FilePath
 lastCheckedFile cfg = (cfg^.cfgDir) `combine` "last"

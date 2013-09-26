@@ -1,20 +1,21 @@
 {-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
-module Gifter.Config.EntryCondition (
-    EntryCondition(..),
-    games,
-    notGames,
-    keywords,
-    notKeywords,
-    copies,
-    points,
-    accP,
-    wishlist,
-    andCond,
-    orCond,
-    emptyEntryCondition,
-    OrdCond(..),
-    match
-) where
+module Gifter.Config.EntryCondition
+    ( EntryCondition(..)
+    , games
+    , notGames
+    , keywords
+    , notKeywords
+    , copies
+    , points
+    , accP
+    , wishlist
+    , andCond
+    , orCond
+    , emptyEntryCondition
+    , OrdCond(..)
+    , match
+    , matchAny
+    ) where
 
 import Data.Aeson
 import Data.Aeson.Types (Parser)
@@ -47,17 +48,17 @@ withOrdCond obj key = parse (sfx `zip` dcons)
                        Nothing -> parse ss
                        Just v -> (snd s `fmap`) `fmap` parseJSON v
 
-data EntryCondition = EntryCondition {
-        _games :: Maybe [T.Text],
-        _notGames :: Maybe [T.Text],
-        _keywords :: Maybe [T.Text],
-        _notKeywords :: Maybe [T.Text],
-        _points :: Maybe (OrdCond Integer),
-        _copies :: Maybe (OrdCond Integer),
-        _accP :: Maybe (OrdCond Integer),
-        _wishlist :: Bool,
-        _andCond :: Maybe EntryCondition,
-        _orCond :: Maybe EntryCondition
+data EntryCondition = EntryCondition
+    { _games :: Maybe [T.Text]
+    , _notGames :: Maybe [T.Text]
+    , _keywords :: Maybe [T.Text]
+    , _notKeywords :: Maybe [T.Text]
+    , _points :: Maybe (OrdCond Integer)
+    , _copies :: Maybe (OrdCond Integer)
+    , _accP :: Maybe (OrdCond Integer)
+    , _wishlist :: Bool
+    , _andCond :: Maybe EntryCondition
+    , _orCond :: Maybe EntryCondition
     } deriving (Show, Eq)
 makeLenses ''EntryCondition
 
@@ -89,8 +90,19 @@ instance FromJSON EntryCondition where
                            v .:? "or"
     parseJSON _          = mzero
 
-match :: GiveawayEntry -> SteamGames -> Maybe Integer -> EntryCondition -> Bool
+match :: GiveawayEntry
+         -> SteamGames
+         -> Maybe Integer
+         -> EntryCondition
+         -> Bool
 match = matchCond and
+
+matchAny :: GiveawayEntry
+         -> SteamGames
+         -> Maybe Integer
+         -> [EntryCondition]
+         -> Bool
+matchAny ge sg acp = any (match ge sg acp)
 
 matchCond :: ([Bool] -> Bool)
           -> GiveawayEntry

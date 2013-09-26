@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Gifter.SteamGames (
-    SteamGames,
-    sOwned,
-    sWishlist,
-    getSteamGames,
-    isAlreadyOwned,
-    isInWishlist
-) where
+module Gifter.SteamGames
+    ( SteamGames
+    , sOwned
+    , sWishlist
+    , getSteamGames
+    , isAlreadyOwned
+    , isInWishlist
+    ) where
 
 import Control.Exception
 import Control.Lens

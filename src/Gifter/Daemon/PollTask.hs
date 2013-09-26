@@ -25,18 +25,18 @@ import Gifter.Config
 
 type TaskP = Task () PollTaskState
 
-data PollTaskState = PollTaskState {
-                     _dataChannel :: TChan GiveawayEntry
-                   , _configVar :: ConfigVar
-                   , _lastCheckedUrl :: Maybe T.Text
-                   }
+data PollTaskState = PollTaskState
+    { _dataChannel :: TChan GiveawayEntry
+    , _configVar :: ConfigVar
+    , _lastCheckedUrl :: Maybe T.Text
+    }
 makeLenses ''PollTaskState
 
 startPollTask :: Config
-          -> TChan GiveawayEntry
-          -> ConfigVar
-          -> Maybe T.Text
-          -> IO ()
+              -> TChan GiveawayEntry
+              -> ConfigVar
+              -> Maybe T.Text
+              -> IO ()
 startPollTask cfg dc cc lc = do
     let s = PollTaskState dc cc lc
     runTask cfg () s pollTask
@@ -46,9 +46,7 @@ pollTask = forever pollAction
 
 pollAction :: TaskP ()
 pollAction = do
-    cfgVar <- getsIntState (^.configVar)
-    cfg' <- liftIO . atomically $ readConfigVar cfgVar
-    replaceConfig cfg'
+    updateConfig (^.configVar)
     cfg <- getConfig
     ges <- liftIO $ getEntries 999
     either handleEntriesError handleEntriesSuccess ges

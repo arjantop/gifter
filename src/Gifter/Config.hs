@@ -8,14 +8,13 @@ module Gifter.Config
     , retryDelay
     , enter
     , cfgDir
-    , EntryCondition(..)
+    , EntryCondition
     , ConfigError(..)
     , emptyConfig
     , readConfig
     , defaultLocation
     , defaultDir
-    , match
-) where
+    ) where
 
 import Data.Conduit
 import qualified Data.Conduit.Binary as CB

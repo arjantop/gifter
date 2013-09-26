@@ -5,7 +5,6 @@ module Main (
 ) where
 
 import Control.Lens
-import Control.Monad
 import Control.Concurrent.Async
 import Control.Concurrent.STM
 
@@ -61,7 +60,6 @@ tryGetSteamGames cfg fp = do
     logTime "Trying to get steam game list"
     loop (cfg^.maxRetries)
   where
-    {-loop 0 = logTime "Error getting steam games list"-}
     loop n = do
         sge <- getSteamGames (cfg^.sessionId)
         case sge of
@@ -80,13 +78,11 @@ tryGetSteamGames cfg fp = do
 startTasks :: Config -> FilePath-> SteamGames -> IO ()
 startTasks cfg fp sg = do
     giveChan <- newTChanIO
-    giveChan' <- newTChanIO
     cfgVar <- newEmptyConfigVarIO
     lastChPer <- readLastChecked $ lastCheckedFile cfg
     _ <- async (startConfigWatcherTask fp cfgVar)
     r1 <- async (startPollTask cfg giveChan cfgVar lastChPer)
-    _ <- async (forever $ atomically (readTChan giveChan >>= \x -> writeTChan giveChan' (NewData [x])))
-    r2 <- async (enterSelectedGiveaways giveChan' cfg sg Nothing)
+    r2 <- async (startEnterTask cfg giveChan cfgVar sg)
     res <- waitEitherCatchCancel r1 r2
     handleErrors res
   where
