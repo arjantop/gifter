@@ -20,6 +20,7 @@ import qualified Data.HashSet as HS
 import Gifter.Daemon.Common
 import Gifter.Daemon.PollTask
 import Gifter.Daemon.EnterTask
+import Gifter.Daemon.ConfigWatcherTask
 import Gifter.Logging
 import Gifter.Config
 import Gifter.SteamGames
@@ -51,12 +52,12 @@ main = do
     cargs <- cmdArgs $ gifterArgs defCfg progName
     ecfg <- readConfig (cargs^.config)
     case ecfg of
-        Right cfg -> tryGetSteamGames cfg
+        Right cfg -> tryGetSteamGames cfg (cargs^.config)
         Left (MissingFile fp) -> putStrLn $ "Missing config file: " ++ fp
         Left ConfigParseError -> putStrLn "Config parse error"
 
-tryGetSteamGames :: Config -> IO ()
-tryGetSteamGames cfg = do
+tryGetSteamGames :: Config -> FilePath -> IO ()
+tryGetSteamGames cfg fp = do
     logTime "Trying to get steam game list"
     loop (cfg^.maxRetries)
   where
@@ -69,20 +70,21 @@ tryGetSteamGames cfg = do
                     nWish = HS.size (sg^.sWishlist)
                 logTime $ "You currently own " ++ show nGames ++ " games"
                 logTime $ "You have " ++ show nWish ++ " games in wishlist"
-                startTasks cfg sg
+                startTasks cfg fp sg
             Left e -> do
                 logTime "Could not get steam game list. Retrying"
                 logTime $ show e
                 delay (cfg^.requestDelay)
                 loop (n - 1)
 
-startTasks :: Config -> SteamGames -> IO ()
-startTasks cfg sg = do
+startTasks :: Config -> FilePath-> SteamGames -> IO ()
+startTasks cfg fp sg = do
     giveChan <- newTChanIO
     giveChan' <- newTChanIO
-    cfgChan <- newTChanIO
+    cfgVar <- newEmptyConfigVarIO
     lastChPer <- readLastChecked $ lastCheckedFile cfg
-    r1 <- async (startTask cfg giveChan cfgChan lastChPer)
+    _ <- async (startConfigWatcherTask fp cfgVar)
+    r1 <- async (startPollTask cfg giveChan cfgVar lastChPer)
     _ <- async (forever $ atomically (readTChan giveChan >>= \x -> writeTChan giveChan' (NewData [x])))
     r2 <- async (enterSelectedGiveaways giveChan' cfg sg Nothing)
     res <- waitEitherCatchCancel r1 r2

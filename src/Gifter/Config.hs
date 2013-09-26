@@ -1,19 +1,20 @@
 {-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
-module Gifter.Config (
-    Config(..),
-    sessionId,
-    pollDelay,
-    requestDelay,
-    maxRetries,
-    retryDelay,
-    enter,
-    cfgDir,
-    EntryCondition(..),
-    ConfigError(..),
-    readConfig,
-    defaultLocation,
-    defaultDir,
-    match
+module Gifter.Config
+    ( Config(..)
+    , sessionId
+    , pollDelay
+    , requestDelay
+    , maxRetries
+    , retryDelay
+    , enter
+    , cfgDir
+    , EntryCondition(..)
+    , ConfigError(..)
+    , emptyConfig
+    , readConfig
+    , defaultLocation
+    , defaultDir
+    , match
 ) where
 
 import Data.Conduit
@@ -30,14 +31,14 @@ import System.FilePath.Posix
 
 import Gifter.Config.EntryCondition
 
-data Config = Config {
-        _sessionId :: T.Text,
-        _pollDelay :: Integer,
-        _requestDelay :: Integer,
-        _maxRetries :: Integer,
-        _retryDelay :: Integer,
-        _enter :: [EntryCondition],
-        _cfgDir :: FilePath
+data Config = Config
+    { _sessionId :: T.Text
+    , _pollDelay :: Integer
+    , _requestDelay :: Integer
+    , _maxRetries :: Integer
+    , _retryDelay :: Integer
+    , _enter :: [EntryCondition]
+    , _cfgDir :: FilePath
     } deriving (Show, Eq)
 makeLenses ''Config
 
@@ -55,6 +56,9 @@ instance FromJSON Config where
 data ConfigError = MissingFile FilePath
                  | ConfigParseError
                  deriving (Show, Eq)
+
+emptyConfig :: Config
+emptyConfig = Config "" 0 0 0 0 [] ""
 
 defaultDir :: IO FilePath
 defaultDir = getAppUserDataDirectory "gifter"

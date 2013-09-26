@@ -37,7 +37,7 @@ enterSelectedGiveaways gc cfg sg cap = do
         numFilGs = length filteredGs
     logTimeWhen (numFilGs > 0) $ "Trying to enter " ++ show numFilGs ++ " giveaways"
     cap' <- enterAll cap filteredGs
-    delay $ cfg^.pollDelay
+    delay $ cfg^.requestDelay
     enterSelectedGiveaways gc cfg sg (cap' `mplus` cap)
   where
     enterAll c = foldM (foldCap c) Nothing

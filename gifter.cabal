@@ -46,7 +46,9 @@ executable gifterd
     regex-tdfa                  >= 1.1,
     unordered-containers        >= 0.2,
     lens                        >= 3.9,
-    mtl                         >= 2.1
+    mtl                         >= 2.1,
+    fsnotify                    >= 0.0.11,
+    printf-mauke                >= 0.5.1
   
 test-suite spec
   type: exitcode-stdio-1.0
