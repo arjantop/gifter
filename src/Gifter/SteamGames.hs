@@ -3,12 +3,14 @@ module Gifter.SteamGames
     ( SteamGames
     , sOwned
     , sWishlist
+    , emptySteamGames
+    , numberOwned
+    , numberWishlist
     , getSteamGames
     , isAlreadyOwned
     , isInWishlist
     ) where
 
-import Control.Exception
 import Control.Lens
 
 import Text.HTML.DOM (parseLBS)
@@ -22,9 +24,18 @@ import Gifter.GiveawayEntry
 import Gifter.SteamGames.Internal
 import Gifter.SteamGames.Parser
 
-getSteamGames :: T.Text -> IO (Either SomeException SteamGames)
+emptySteamGames :: SteamGames
+emptySteamGames = SteamGames (HS.fromList []) (HS.fromList [])
+
+numberOwned :: SteamGames -> Int
+numberOwned sg = HS.size (sg^.sOwned)
+
+numberWishlist :: SteamGames -> Int
+numberWishlist sg = HS.size (sg^.sWishlist)
+
+getSteamGames :: T.Text -> IO SteamGames
 getSteamGames sessId =
-    try $ request "http://www.steamgifts.com/sync" "GET" [] sessId f
+    request "http://www.steamgifts.com/sync" "GET" [] sessId f
   where
     f = parse . fromDocument . parseLBS
 

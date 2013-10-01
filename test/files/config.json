@@ -5,6 +5,7 @@
     "maxRetries": 3,
     "retryDelay": 3,
     "accPointsExpire": 10,
+    "steamGamesExpire": 60,
     "enter": [
         {
             "games": [

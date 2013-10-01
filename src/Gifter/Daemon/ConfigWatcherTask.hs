@@ -1,9 +1,6 @@
 {-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
 module Gifter.Daemon.ConfigWatcherTask
-    ( ConfigVar
-    , newEmptyConfigVarIO
-    , readConfigVar
-    , startConfigWatcherTask
+    ( startConfigWatcherTask
     ) where
 
 import Control.Monad
@@ -11,6 +8,7 @@ import Control.Monad.Trans
 import Control.Monad.Reader
 import Control.Concurrent.Chan
 import Control.Concurrent.STM
+import Control.Concurrent.STM.TEVar
 import Control.Lens
 
 import qualified Filesystem.Path as FP
@@ -30,23 +28,12 @@ type TaskCW = Task FilePath ConfigWatcherState
 configPath :: TaskCW FilePath
 configPath = ask
 
-newtype ConfigVar = ConfigVar (TMVar Config)
-
-newEmptyConfigVarIO :: IO (ConfigVar)
-newEmptyConfigVarIO = ConfigVar `liftM` newEmptyTMVarIO
-
-putConfigVar :: ConfigVar -> Config -> STM ()
-putConfigVar (ConfigVar v) cfg = tryTakeTMVar v >> putTMVar v cfg
-
-readConfigVar :: ConfigVar -> STM Config
-readConfigVar (ConfigVar v) = readTMVar v
-
 data ConfigWatcherState = ConfigWatcherState
-    { _latestConf :: ConfigVar }
+    { _latestConf :: TEVar Config }
 makeLenses ''ConfigWatcherState
 
 startConfigWatcherTask :: FilePath
-                       -> ConfigVar
+                       -> TEVar Config
                        -> IO ()
 startConfigWatcherTask fp v = do
     let s = ConfigWatcherState v
@@ -82,7 +69,7 @@ readUpdateConfig = do
     case ecfg of
         Right cfg -> do
             var <- getsIntState (^.latestConf)
-            liftIO . atomically $ putConfigVar var cfg
+            liftIO . atomically $ writeTEVar var cfg
         Left e -> handleConfigError e
 
 handleConfigError :: MonadIO m => ConfigError -> m ()

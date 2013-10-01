@@ -4,19 +4,18 @@ module Gifter.Daemon.EnterTask
     ) where
 
 import Control.Lens
-import Control.Monad.State
+import Control.Monad.Reader
 import Control.Concurrent.STM
+import Control.Concurrent.STM.TEVar
 import Control.Exception
 
 import Data.Text.Lens
 import Data.Time.Clock
-import Data.Time.Calendar
 
 import Text.Printf.Mauke.TH
 
 import Gifter.Daemon.Task
 import Gifter.Daemon.Common
-import Gifter.Daemon.ConfigWatcherTask
 import Gifter.Logging
 import Gifter.GiveawayEntry
 import Gifter.Giveaway
@@ -41,31 +40,38 @@ retryN n m = do
 retryN_ :: (Monad m) => Int -> m Retry -> m ()
 retryN_ n m = retryN n m >> return ()
 
-type TaskE = Task () EnterTaskState
-
-isTimeTagExpired :: TaggedValue UTCTime a -> TaskE Bool
-isTimeTagExpired tv = do
-    ct <- liftIO $ getCurrentTime
-    return $ isExpired ct tv
+data EnterTaskRead = EnterTaskRead
+    { _dataChannel :: TChan GiveawayEntry
+    , _configVar :: TEVar Config
+    , _steamGamesVar :: TEVar SteamGames
+    }
+makeLenses ''EnterTaskRead
 
 data EnterTaskState = EnterTaskState
-    { _dataChannel :: TChan GiveawayEntry
-    , _currentAccPoints :: TaggedValue UTCTime Integer
-    , _steamGames :: TaggedValue UTCTime SteamGames
-    , _configVar :: ConfigVar
+    { _currentAccPoints :: TaggedValue UTCTime Integer
+    , _steamGames :: SteamGames
     }
 makeLenses ''EnterTaskState
 
+getDataChannel :: TaskE (TChan GiveawayEntry)
+getDataChannel = asks (^.dataChannel)
+
+getSteamGamesVar :: TaskE (TEVar SteamGames)
+getSteamGamesVar = asks (^.steamGamesVar)
+
+type TaskE = Task EnterTaskRead EnterTaskState
+
 startEnterTask :: Config
                -> TChan GiveawayEntry
-               -> ConfigVar
-               -> SteamGames
+               -> TEVar Config
+               -> TEVar SteamGames
                -> IO ()
-startEnterTask cfg dc cv sg = do
+startEnterTask cfg dc cv sgv = do
     tn <- getCurrentTime
-    let tp = UTCTime (fromGregorian 1900 1 1) (secondsToDiffTime 0)
-        s = EnterTaskState dc (tagValue tp 0) (tagValue tn sg) cv
-    runTask cfg () s enterTask
+    let te = addUTCTime (fromInteger $ -10) tn
+        r = EnterTaskRead dc cv sgv
+        s = EnterTaskState (tagValue te 0) emptySteamGames
+    runTask cfg r s enterTask
 
 enterTask :: TaskE ()
 enterTask = forever enterAction
@@ -73,16 +79,23 @@ enterTask = forever enterAction
 enterAction :: TaskE ()
 enterAction = do
     updateConfig (^.configVar)
+    updateSteamGames
     updateAccPointsIfExpired
     cfg <- getConfig
-    dc <- getsIntState (^.dataChannel)
+    dc <- getDataChannel
     ge <- liftIO . atomically $ readTChan dc
-    sg <- getValue `liftM` getsIntState (^.steamGames)
+    sg <- getsIntState (^.steamGames)
     if matchAny ge sg Nothing (cfg^.enter) && not (isAlreadyOwned sg ge)
         then let maxR = fromIntegral $ cfg^.maxRetries
              in retryN_ maxR $ tryGetGiveawayInfo ge
         else return ()
     delay (cfg^.requestDelay)
+
+updateSteamGames :: TaskE ()
+updateSteamGames = do
+    sgv <- getSteamGamesVar
+    sg <- liftIO . atomically $ readTEVar sgv
+    modifyIntState (set steamGames sg)
 
 tryGetGiveawayInfo :: GiveawayEntry -> TaskE Retry
 tryGetGiveawayInfo ge = do
@@ -151,10 +164,6 @@ getNewAccpoints = do
         Left e -> reportException e
         Right Nothing -> logTime "Error parsing account points from response"
         Right (Just cap') -> updateCurrentAccPoints cap'
-
-reportException :: SomeException -> Task r s ()
-reportException e =
-    logTime $ $(printf "Failed with exception: %s") (show e)
 
 updateCurrentAccPoints :: Integer -> TaskE ()
 updateCurrentAccPoints cap = do

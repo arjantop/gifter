@@ -7,6 +7,7 @@ module Gifter.Config
     , maxRetries
     , retryDelay
     , accPointsExpire
+    , steamGamesExpire
     , enter
     , cfgDir
     , EntryCondition
@@ -38,6 +39,7 @@ data Config = Config
     , _maxRetries :: Integer
     , _retryDelay :: Integer
     , _accPointsExpire :: Integer
+    , _steamGamesExpire :: Integer
     , _enter :: [EntryCondition]
     , _cfgDir :: FilePath
     } deriving (Show, Eq)
@@ -51,6 +53,7 @@ instance FromJSON Config where
                            v .: "maxRetries" <*>
                            v .: "retryDelay" <*>
                            v .: "accPointsExpire" <*>
+                           v .: "steamGamesExpire" <*>
                            v .: "enter" <*>
                            return ""
     parseJSON _          = mzero
@@ -60,7 +63,7 @@ data ConfigError = MissingFile FilePath
                  deriving (Show, Eq)
 
 emptyConfig :: Config
-emptyConfig = Config "" 0 0 0 0 0 [] ""
+emptyConfig = Config "" 0 0 0 0 0 0 [] ""
 
 defaultDir :: IO FilePath
 defaultDir = getAppUserDataDirectory "gifter"

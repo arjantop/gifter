@@ -1,23 +1,25 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Gifter.Daemon.Common (
-    DataEvent(..),
-    TaskM,
-    runTaskM,
-    delay,
-    lastCheckedFile,
-    readLastChecked,
-    writeLastChecked,
-    updateConfig
-) where
+{-# LANGUAGE TemplateHaskell #-}
+module Gifter.Daemon.Common
+    ( delay
+    , lastCheckedFile
+    , readLastChecked
+    , writeLastChecked
+    , updateConfig
+    , reportException
+    ) where
 
 import Control.Lens
 import Control.Concurrent
+import Control.Monad.Trans
 import Control.Monad.Reader
-import Control.Monad.State
 import Control.Concurrent.STM
+import Control.Concurrent.STM.TEVar
+import Control.Exception
 
 import System.FilePath
 import System.Directory
+
+import Text.Printf.Mauke.TH
 
 import Data.Conduit
 import Data.Conduit.Binary
@@ -28,25 +30,20 @@ import Data.Text.Lazy.Encoding
 
 import Gifter.Config
 import Gifter.Daemon.Task
-import Gifter.Daemon.ConfigWatcherTask
-
-newtype DataEvent a = NewData [a]
-
-newtype TaskM s a = TaskM {
-        unPollM :: ReaderT Config (StateT s IO) a
-    } deriving (Monad, MonadState s, MonadReader Config, MonadIO)
-
-runTaskM :: Config -> s -> TaskM s a -> IO a
-runTaskM cfg ts m = evalStateT (runReaderT (unPollM m) cfg) ts
+import Gifter.Logging
 
 delay :: (MonadIO m) => Integer -> m ()
 delay ms = liftIO $ threadDelay (fromIntegral ms * 1000000)
 
-updateConfig :: (s -> ConfigVar) -> Task r s ()
+updateConfig :: (r -> TEVar Config) -> Task r s ()
 updateConfig f = do
-    cfgVar <- getsIntState f
-    cfg' <- liftIO . atomically $ readConfigVar cfgVar
+    cfgVar <- asks f
+    cfg' <- liftIO . atomically $ readTEVar cfgVar
     replaceConfig cfg'
+
+reportException :: SomeException -> Task r s ()
+reportException e =
+    logTime $ $(printf "Failed with exception: %s") (show e)
 
 lastCheckedFile :: Config -> FilePath
 lastCheckedFile cfg = (cfg^.cfgDir) `combine` "last"

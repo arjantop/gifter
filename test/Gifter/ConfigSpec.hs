@@ -25,6 +25,7 @@ spec = do
                     _maxRetries = 3,
                     _retryDelay = 3,
                     _accPointsExpire = 10,
+                    _steamGamesExpire = 60,
                     _enter = [
                         emptyEntryCondition
                             & games .~ Just ["Game Title 1", "Game title 2"],
