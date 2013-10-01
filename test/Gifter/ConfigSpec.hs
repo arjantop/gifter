@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Gifter.ConfigSpec (
-    main,
-    spec
-)	where
+module Gifter.ConfigSpec
+    ( main
+    , spec
+    ) where
 
 import Test.Hspec
 
@@ -24,6 +24,7 @@ spec = do
                     _requestDelay = 3,
                     _maxRetries = 3,
                     _retryDelay = 3,
+                    _accPointsExpire = 10,
                     _enter = [
                         emptyEntryCondition
                             & games .~ Just ["Game Title 1", "Game title 2"],

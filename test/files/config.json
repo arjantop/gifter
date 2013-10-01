@@ -4,6 +4,7 @@
     "requestDelay": 3,
     "maxRetries": 3,
     "retryDelay": 3,
+    "accPointsExpire": 10,
     "enter": [
         {
             "games": [

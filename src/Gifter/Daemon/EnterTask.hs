@@ -6,6 +6,7 @@ module Gifter.Daemon.EnterTask
 import Control.Lens
 import Control.Monad.State
 import Control.Concurrent.STM
+import Control.Exception
 
 import Data.Text.Lens
 import Data.Time.Clock
@@ -23,6 +24,7 @@ import Gifter.Giveaway.Parser (DataError(..))
 import Gifter.Config
 import Gifter.Config.EntryCondition
 import Gifter.SteamGames
+import Gifter.TaggedValue
 
 data Retry = Retry
            | Done
@@ -41,20 +43,10 @@ retryN_ n m = retryN n m >> return ()
 
 type TaskE = Task () EnterTaskState
 
-data TaggedValue t a = TaggedValue t a
-                     deriving (Show, Eq)
-
-getTag :: TaggedValue t v -> t
-getTag (TaggedValue t _) = t
-
-getValue :: TaggedValue t v -> v
-getValue (TaggedValue _ v) = v
-
 isTimeTagExpired :: TaggedValue UTCTime a -> TaskE Bool
-isTimeTagExpired (TaggedValue t _) = do
+isTimeTagExpired tv = do
     ct <- liftIO $ getCurrentTime
-    let dt = diffUTCTime ct t
-    return $ dt > 100
+    return $ isExpired ct tv
 
 data EnterTaskState = EnterTaskState
     { _dataChannel :: TChan GiveawayEntry
@@ -72,7 +64,7 @@ startEnterTask :: Config
 startEnterTask cfg dc cv sg = do
     tn <- getCurrentTime
     let tp = UTCTime (fromGregorian 1900 1 1) (secondsToDiffTime 0)
-        s = EnterTaskState dc (TaggedValue tp 0) (TaggedValue tn sg) cv
+        s = EnterTaskState dc (tagValue tp 0) (tagValue tn sg) cv
     runTask cfg () s enterTask
 
 enterTask :: TaskE ()
@@ -81,6 +73,7 @@ enterTask = forever enterAction
 enterAction :: TaskE ()
 enterAction = do
     updateConfig (^.configVar)
+    updateAccPointsIfExpired
     cfg <- getConfig
     dc <- getsIntState (^.dataChannel)
     ge <- liftIO . atomically $ readTChan dc
@@ -102,7 +95,7 @@ tryGetGiveawayInfo ge = do
 
 handleInfoSuccess :: Giveaway -> TaskE Retry
 handleInfoSuccess g = do
-    updateCurrentAccPoints g
+    updateCurrentAccPoints (g^.accPoints)
     cfg <- getConfig
     if canEnter g
         then let maxR = fromIntegral $ cfg^.maxRetries
@@ -124,10 +117,9 @@ tryEnterGiveaway g = do
 
 handleEnterSuccess :: Giveaway -> TaskE Retry
 handleEnterSuccess g = do
-    updateCurrentAccPoints g
-    if isEntered g
-        then logTime $ $(printf "Entered giveaway: %s") (g^.url.unpacked)
-        else return ()
+    let msg = $(printf "Entered giveaway: %s") (g^.url.unpacked)
+    when (isEntered g) $ logTime msg
+    updateCurrentAccPoints (g^.accPoints)
     return Done
 
 handleGiveawayError :: GiveawayError -> TaskE Retry
@@ -142,9 +134,33 @@ handleGiveawayError ge = case ge of
         logTime "Network error"
         return Retry
 
-updateCurrentAccPoints :: Giveaway -> TaskE ()
-updateCurrentAccPoints g = do
+updateAccPointsIfExpired :: TaskE ()
+updateAccPointsIfExpired = do
+    cap <- getsIntState (^.currentAccPoints)
+    tn <- liftIO $ getCurrentTime
+    if isExpired tn cap
+        then getNewAccpoints
+        else return ()
+
+getNewAccpoints :: TaskE ()
+getNewAccpoints = do
+    cfg <- getConfig
+    logTime "Updating account points ..."
+    maPoints <- liftIO . try $ getAccPoints cfg
+    case maPoints of
+        Left e -> reportException e
+        Right Nothing -> logTime "Error parsing account points from response"
+        Right (Just cap') -> updateCurrentAccPoints cap'
+
+reportException :: SomeException -> Task r s ()
+reportException e =
+    logTime $ $(printf "Failed with exception: %s") (show e)
+
+updateCurrentAccPoints :: Integer -> TaskE ()
+updateCurrentAccPoints cap = do
+    cfg <- getConfig
     t <- liftIO $ getCurrentTime
-    let tap = TaggedValue t (g^.accPoints)
-    logTime $ $(printf "You have %d points") (g^.accPoints)
+    let ft = addUTCTime (fromIntegral $ cfg^.accPointsExpire * 60) t
+        tap = tagValue ft cap
+    logTime $ $(printf "You have %d points") cap
     modifyIntState (set currentAccPoints tap)

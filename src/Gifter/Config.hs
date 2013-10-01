@@ -6,6 +6,7 @@ module Gifter.Config
     , requestDelay
     , maxRetries
     , retryDelay
+    , accPointsExpire
     , enter
     , cfgDir
     , EntryCondition
@@ -36,6 +37,7 @@ data Config = Config
     , _requestDelay :: Integer
     , _maxRetries :: Integer
     , _retryDelay :: Integer
+    , _accPointsExpire :: Integer
     , _enter :: [EntryCondition]
     , _cfgDir :: FilePath
     } deriving (Show, Eq)
@@ -48,6 +50,7 @@ instance FromJSON Config where
                            v .: "requestDelay" <*>
                            v .: "maxRetries" <*>
                            v .: "retryDelay" <*>
+                           v .: "accPointsExpire" <*>
                            v .: "enter" <*>
                            return ""
     parseJSON _          = mzero
@@ -57,7 +60,7 @@ data ConfigError = MissingFile FilePath
                  deriving (Show, Eq)
 
 emptyConfig :: Config
-emptyConfig = Config "" 0 0 0 0 [] ""
+emptyConfig = Config "" 0 0 0 0 0 [] ""
 
 defaultDir :: IO FilePath
 defaultDir = getAppUserDataDirectory "gifter"

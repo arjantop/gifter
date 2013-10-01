@@ -1,8 +1,9 @@
 {-# LANGUAGE QuasiQuotes, OverloadedStrings #-}
-module Gifter.Giveaway.Parser (
-    parse,
-    DataError(..)
-) where
+module Gifter.Giveaway.Parser
+    ( parse
+    , parseAccPoints
+    , DataError(..)
+    ) where
 
 import Control.Monad
 

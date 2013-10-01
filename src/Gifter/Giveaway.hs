@@ -1,19 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Gifter.Giveaway (
-    Giveaway(..),
-    url,
-    status,
-    entries,
-    formKey,
-    accPoints,
-    GiveawayStatus(..),
-    GiveawayError(..),
-    canEnter,
-    isRemoved,
-    isEntered,
-    getGiveaway,
-    enterGiveaway
-) where
+module Gifter.Giveaway
+    ( Giveaway(..)
+    , url
+    , status
+    , entries
+    , formKey
+    , accPoints
+    , GiveawayStatus(..)
+    , GiveawayError(..)
+    , canEnter
+    , isRemoved
+    , isEntered
+    , getAccPoints
+    , getGiveaway
+    , enterGiveaway
+    ) where
 
 
 import Text.XML.Cursor (fromDocument)
@@ -49,6 +50,12 @@ isRemoved _                                   = False
 
 isEntered :: Giveaway -> Bool
 isEntered = (==Entered) . view status
+
+getAccPoints :: Config -> IO (Maybe Integer)
+getAccPoints cfg = let sgUrl = "http://www.steamgifts.com" 
+                       sid = cfg^.sessionId
+                       p = parseAccPoints . fromDocument . parseLBS
+                   in request sgUrl "GET" [] sid p
 
 getGiveaway :: T.Text -> Config -> IO (Either GiveawayError Giveaway)
 getGiveaway gurl cfg =

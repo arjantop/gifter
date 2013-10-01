@@ -29,19 +29,19 @@ data GifterdArgs = GifterdArgs { _config :: String }
 makeLenses ''GifterdArgs
 
 gifterArgs :: String -> String -> GifterdArgs
-gifterArgs defCfg progName = GifterdArgs {
-                        _config = defCfg &= help "Config file location"
-                                         &= explicit
-                                         &= name "config"
-                                         &= typFile
-                                         &= groupname "Program options"
-                    } &= summary "Simple program for automatic giveaway entry on steamgifts.com"
-                      &= program progName
-                      &= helpArg [explicit,
-                                  name "h",
-                                  name "help",
-                                  groupname "Other"]
-                      &= versionArg [ignore]
+gifterArgs defCfg progName = GifterdArgs
+    { _config = defCfg &= help "Config file location"
+                       &= explicit
+                       &= name "config"
+                       &= typFile
+                       &= groupname "Program options"
+    } &= summary "Simple program for automatic giveaway entry on steamgifts.com"
+      &= program progName
+      &= helpArg [explicit,
+                  name "h",
+                  name "help",
+                  groupname "Other"]
+      &= versionArg [ignore]
 
 main :: IO ()
 main = do
