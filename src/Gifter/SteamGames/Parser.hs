@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
-module Gifter.SteamGames.Parser (
-    parse
-) where
+module Gifter.SteamGames.Parser
+    ( parse
+    ) where
 
 import Text.XML.Cursor
 import Text.XML.Scraping (innerHtml)

@@ -1,8 +1,7 @@
-{-# LANGUAGE TemplateHaskell, GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-module Main (
-    main
-) where
+{-# LANGUAGE TemplateHaskell, DeriveDataTypeable #-}
+module Main
+    ( main
+    ) where
 
 import Control.Lens
 import Control.Concurrent.Async
@@ -65,6 +64,5 @@ startTasks fp = do
     res <- waitAnyCatchCancel [cwt, sgt, pt, et]
     handleErrors res
   where
-    handleErrors (_, (Left e)) =
-        logTime $ "Failed with exception: " ++ show e
+    handleErrors (_, (Left e)) = logTime $ "Failed with exception: " ++ show e
     handleErrors _ = logTime "Unexpected return value"
