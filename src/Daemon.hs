@@ -49,27 +49,22 @@ main = do
     defCfg <- defaultLocation
     progName <- getProgName
     cargs <- cmdArgs $ gifterArgs defCfg progName
-    ecfg <- readConfig (cargs^.config)
-    case ecfg of
-        Right cfg -> startTasks cfg (cargs^.config)
-        Left (MissingFile fp) -> putStrLn $ "Missing config file: " ++ fp
-        Left ConfigParseError -> putStrLn "Config parse error"
+    startTasks (cargs^.config)
 
-startTasks :: Config -> FilePath -> IO ()
-startTasks cfg fp = do
+startTasks :: FilePath -> IO ()
+startTasks fp = do
     giveChan <- newTChanIO
     cfgVar <- newEmptyTEVarIO
     sgVar <- newEmptyTEVarIO
+    cwt <- async (startConfigWatcherTask fp cfgVar)
+    cfg <- atomically $ readTEVar cfgVar
     lastChPer <- readLastChecked $ lastCheckedFile cfg
-    _ <- async (startConfigWatcherTask fp cfgVar)
-    _ <- async (startSteamGamesTask cfg cfgVar sgVar)
-    r1 <- async (startPollTask cfg giveChan cfgVar lastChPer)
-    r2 <- async (startEnterTask cfg giveChan cfgVar sgVar)
-    res <- waitEitherCatchCancel r1 r2
+    sgt <- async (startSteamGamesTask cfg cfgVar sgVar)
+    pt <- async (startPollTask cfg giveChan cfgVar lastChPer)
+    et <- async (startEnterTask cfg giveChan cfgVar sgVar)
+    res <- waitAnyCatchCancel [cwt, sgt, pt, et]
     handleErrors res
   where
-    handleErrors (Left (Left e)) =
-        logTime $ "Poll thread failed with exception: " ++ show e
-    handleErrors (Right (Left e)) =
-        logTime $ "Enter giveaways thread failed with exception: " ++ show e
+    handleErrors (_, (Left e)) =
+        logTime $ "Failed with exception: " ++ show e
     handleErrors _ = logTime "Unexpected return value"
