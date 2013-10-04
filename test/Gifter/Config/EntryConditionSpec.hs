@@ -29,7 +29,7 @@ withCopies :: Integer -> GiveawayEntry
 withCopies c = GiveawayEntry "" "" c 0
 
 sg :: SteamGames
-sg = SteamGames (HS.fromList []) (HS.fromList ["game 1", "game 2"])
+sg = SteamGames (HS.fromList []) (HS.fromList ["game 1", "game 2"]) Nothing
 
 eec :: EntryCondition
 eec = emptyEntryCondition

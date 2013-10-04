@@ -21,6 +21,7 @@ import Safe
 
 import Control.Applicative
 
+import Gifter.Parser.Common
 import Gifter.Giveaway.Internal
 
 data DataError = GiveawayRemoved
@@ -44,16 +45,11 @@ parseGiveaway u c = Giveaway <$>
             pure u <*>
             parseStatus c <*>
             parseEntries c `mplus` Just 0 <*>
-            parseFormKey c <*>
+            (Just $ parseFormKey c) <*>
             parseAccPoints c `mplus` Just 0
 
 parseData :: [JQSelector] -> Cursor -> Maybe T.Text
 parseData query = fmap (toStrict . innerHtml) . headMay . queryT query
-
-parseAttribute :: [JQSelector] -> Cursor -> Maybe T.Text
-parseAttribute query c =
-    let attrList = fmap (attribute "value") . headMay . queryT query $ c
-    in attrList >>= headMay
 
 parseStatus :: Cursor -> Maybe GiveawayStatus
 parseStatus c = parseData [jq| div.details .rounded |] c >>= toStatus
@@ -73,9 +69,6 @@ parseStatus c = parseData [jq| div.details .rounded |] c >>= toStatus
 parseEntries :: Cursor -> Maybe Integer
 parseEntries c = (fmap (digitsOnly . T.unpack) .
                     parseData [jq| div.rounded.entries |] $ c) >>= readMay
-
-parseFormKey :: Cursor -> Maybe (Maybe T.Text)
-parseFormKey c = Just $ parseAttribute [jq| input[name=form_key] |] c
 
 parseAccPoints :: Cursor -> Maybe Integer
 parseAccPoints c = let q = [jq| div#navigation a.arrow |]

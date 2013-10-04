@@ -13,10 +13,11 @@ import qualified Data.HashSet as HS
 import Data.Text.Lazy (toStrict)
 import Data.XML.Types (Content(..))
 
+import Gifter.Parser.Common
 import Gifter.SteamGames.Internal
 
 parse :: Cursor -> SteamGames
-parse c = SteamGames (process ownedList) (process wishList)
+parse c = SteamGames (process ownedList) (process wishList) (parseFormKey c)
   where
     parseData query = fmap (toStrict . innerHtml) . queryT query
     d = parseData [jq| div.row div.code |] c

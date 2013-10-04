@@ -33,6 +33,7 @@ spec =
                         _sWishlist = HS.fromList
                                         ["Tomb Raider",
                                          "Cubemen 2",
-                                         "Kentucky Route Zero"]
+                                         "Kentucky Route Zero"],
+                        _sFormKey = Just "c0235212cf41b36612029de779bf5261"
                     }
             fmap parse loadSteamGames `shouldReturn` sg

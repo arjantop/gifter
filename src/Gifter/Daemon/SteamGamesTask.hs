@@ -12,6 +12,7 @@ import Control.Concurrent.STM
 import Control.Concurrent.STM.TEVar
 
 import Data.Time.Clock
+import qualified Data.Text as T
 
 import Text.Printf.Mauke.TH
 
@@ -59,8 +60,22 @@ steamGamesAction = do
 
 updateSteamGames :: TaskSG ()
 updateSteamGames = do
+    sg <- getsIntState getValue
+    case sg^.sFormKey of
+        Just fk -> syncAndFetch fk
+        Nothing -> fetch
+
+syncAndFetch :: T.Text -> TaskSG ()
+syncAndFetch fk = do
     cfg <- getConfig
-    logTime "Updating steam game list"
+    logTime "Syncing steam game list"
+    sge <- liftIO . try $ syncSteamGames (cfg^.sessionId) fk
+    either reportException steamGamesSuccess sge
+
+fetch :: TaskSG ()
+fetch = do
+    cfg <- getConfig
+    logTime "Fetching steam game list"
     sge <- liftIO . try $ getSteamGames (cfg^.sessionId)
     either reportException steamGamesSuccess sge
 
