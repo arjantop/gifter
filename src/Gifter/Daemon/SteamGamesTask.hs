@@ -83,6 +83,14 @@ steamGamesSuccess :: SteamGames -> TaskSG ()
 steamGamesSuccess sg = do
     logTime $ $(printf "You currently own %d games") (numberOwned sg)
     logTime $ $(printf "You have %d games in wishlist") (numberWishlist sg)
+    sgOld <- getsIntState getValue
+    let sgNew = over sFormKey (copyFormKeyIfMissing sgOld) sg
+    replaceSteamGames sgNew
+  where
+    copyFormKeyIfMissing osg = flip mplus (osg^.sFormKey)
+
+replaceSteamGames :: SteamGames -> TaskSG ()
+replaceSteamGames sg = do
     sgv <- getSteamGamesVar
     cfg <- getConfig
     t <- liftIO $ getCurrentTime
