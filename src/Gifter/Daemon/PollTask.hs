@@ -11,7 +11,6 @@ import Control.Exception
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TEVar
 
-import qualified Data.Text as T
 import Data.List as L
 
 import Text.Printf.Mauke.TH
@@ -20,6 +19,7 @@ import Safe
 
 import Gifter.Daemon.Task
 import Gifter.Daemon.Common
+import Gifter.Daemon.LastCheckedUrl
 import Gifter.Logging
 import Gifter.GiveawayEntry
 import Gifter.Config
@@ -27,14 +27,11 @@ import Gifter.Config
 data PollTaskRead = PollTaskRead
     { _dataChannel :: TChan GiveawayEntry
     , _configVar :: TEVar Config
+    , _acidLastCheckedUrl :: AcidUrl
     }
 makeLenses ''PollTaskRead
 
-data PollTaskState = PollTaskState
-    { _lastCheckedUrl :: Maybe T.Text }
-makeLenses ''PollTaskState
-
-type TaskP = Task PollTaskRead PollTaskState
+type TaskP = Task PollTaskRead ()
 
 getDataChannel :: TaskP (TChan GiveawayEntry)
 getDataChannel = asks (^.dataChannel)
@@ -45,12 +42,11 @@ getConfigVar = asks (^.configVar)
 startPollTask :: Config
               -> TChan GiveawayEntry
               -> TEVar Config
-              -> Maybe T.Text
+              -> AcidUrl
               -> IO ()
-startPollTask cfg dc cc lc = do
-    let r = PollTaskRead dc cc
-        s = PollTaskState lc
-    runTask cfg r s pollTask
+startPollTask cfg dc cc ac = do
+    let r = PollTaskRead dc cc ac
+    runTask cfg r () pollTask
 
 pollTask :: TaskP ()
 pollTask = forever pollAction
@@ -70,7 +66,7 @@ handleEntriesError e =
 handleEntriesSuccess :: [GiveawayEntry] -> TaskP ()
 handleEntriesSuccess gs = do
     newGs <- keepNew gs
-    updateLastCheckedUrl (headMay gs)
+    updateLastChecked (headMay gs)
     let newGsLen = length newGs
     when (newGsLen > 0) . logTime $ $(printf "Got %d new giveaways") newGsLen
     dataChan <- getDataChannel
@@ -78,14 +74,14 @@ handleEntriesSuccess gs = do
 
 keepNew :: [GiveawayEntry] -> TaskP [GiveawayEntry]
 keepNew ges = do
-    lastChecked <- getsIntState (^.lastCheckedUrl)
-    return $ maybe ges onlyNew lastChecked
+    lastChecked <- getLastCheckedUrl acidLastCheckedUrl
+    return $ onlyNew lastChecked
   where
     onlyNew u = L.takeWhile ((u /=) . (^.gUrl)) ges
 
-updateLastCheckedUrl :: Maybe GiveawayEntry -> TaskP ()
-updateLastCheckedUrl mge = do
-    cfg <- getConfig
-    let mu = (^.gUrl) `fmap` mge
-    modifyIntState $ over lastCheckedUrl (mu `mplus`)
-    liftIO $ writeLastChecked (lastCheckedFile cfg) mu
+updateLastChecked :: Maybe GiveawayEntry -> TaskP ()
+updateLastChecked mge = case mge of
+    Just ge -> do
+        let u = ge^.gUrl
+        updateLastCheckedUrl acidLastCheckedUrl u
+    Nothing -> return ()

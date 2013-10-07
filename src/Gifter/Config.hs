@@ -10,6 +10,7 @@ module Gifter.Config
     , steamGamesExpire
     , enter
     , cfgDir
+    , stateDir
     , EntryCondition
     , ConfigError(..)
     , emptyConfig
@@ -28,7 +29,7 @@ import Control.Applicative
 import Control.Monad
 
 import System.Directory
-import System.FilePath.Posix
+import System.FilePath
 
 import Gifter.Config.EntryCondition
 
@@ -42,6 +43,7 @@ data Config = Config
     , _steamGamesExpire :: Integer
     , _enter :: [EntryCondition]
     , _cfgDir :: FilePath
+    , _stateDir :: FilePath
     } deriving (Show, Eq)
 makeLenses ''Config
 
@@ -55,7 +57,8 @@ instance FromJSON Config where
                            v .: "accPointsExpire" <*>
                            v .: "steamGamesExpire" <*>
                            v .: "enter" <*>
-                           return ""
+                           pure "" <*>
+                           pure ""
     parseJSON _          = mzero
 
 data ConfigError = MissingFile FilePath
@@ -63,7 +66,7 @@ data ConfigError = MissingFile FilePath
                  deriving (Show, Eq)
 
 emptyConfig :: Config
-emptyConfig = Config "" 0 0 0 0 0 0 [] ""
+emptyConfig = Config "" 0 0 0 0 0 0 [] "" ""
 
 defaultDir :: IO FilePath
 defaultDir = getAppUserDataDirectory "gifter"
@@ -80,6 +83,9 @@ readConfig fp = do
             res <- decode `liftM` content
             case res of
                 Nothing -> return . Left $ ConfigParseError
-                Just cfg -> return . Right $ cfg & cfgDir .~ dropFileName fp
+                Just cfg ->
+                    let cfg' = cfg & cfgDir .~ dropFileName fp
+                        cfg'' = cfg' & stateDir .~ (cfg'^.cfgDir) </> "state"
+                    in return . Right $ cfg''
         else return . Left $ MissingFile fp
   where content = runResourceT $ CB.sourceFile fp $$ CB.sinkLbs

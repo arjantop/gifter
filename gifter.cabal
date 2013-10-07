@@ -48,7 +48,9 @@ executable gifterd
     lens                        >= 3.9,
     mtl                         >= 2.1,
     fsnotify                    >= 0.0.11,
-    printf-mauke                >= 0.5.1
+    printf-mauke                >= 0.5.1,
+    safecopy                    >= 0.8.2,
+    acid-state                  >= 0.12.1
   
 test-suite spec
   type: exitcode-stdio-1.0

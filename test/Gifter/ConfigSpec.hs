@@ -47,6 +47,7 @@ spec = do
                                             & points .~ Just (Lt 20)
                                             & copies .~ Just (Gt 2)))
                     ],
-                    _cfgDir = "test/files/"
+                    _cfgDir = "test/files/",
+                    _stateDir = "test/files/state"
                  }
             readConfig "test/files/config.json" `shouldReturn` Right cfg

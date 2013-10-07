@@ -4,6 +4,7 @@ module Main
     ) where
 
 import Control.Lens
+import Control.Exception
 import Control.Concurrent.Async
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TEVar
@@ -12,10 +13,9 @@ import System.IO
 import System.Console.CmdArgs
 import System.Environment
 
-import Data.Data ()
-import Data.Typeable ()
+import Data.Acid.Local
 
-import Gifter.Daemon.Common
+import Gifter.Daemon.LastCheckedUrl
 import Gifter.Daemon.PollTask
 import Gifter.Daemon.EnterTask
 import Gifter.Daemon.ConfigWatcherTask
@@ -57,12 +57,13 @@ startTasks fp = do
     sgVar <- newEmptyTEVarIO
     cwt <- async (startConfigWatcherTask fp cfgVar)
     cfg <- atomically $ readTEVar cfgVar
-    lastChPer <- readLastChecked $ lastCheckedFile cfg
-    sgt <- async (startSteamGamesTask cfg cfgVar sgVar)
-    pt <- async (startPollTask cfg giveChan cfgVar lastChPer)
-    et <- async (startEnterTask cfg giveChan cfgVar sgVar)
-    res <- waitAnyCatchCancel [cwt, sgt, pt, et]
-    handleErrors res
+    bracket (openLocalStateFrom (cfg^.stateDir) initialLastCheckedUrlState)
+            (createCheckpointAndClose) $ \acidLastUrl -> do
+                sgt <- async (startSteamGamesTask cfg cfgVar sgVar)
+                pt <- async (startPollTask cfg giveChan cfgVar acidLastUrl)
+                et <- async (startEnterTask cfg giveChan cfgVar sgVar)
+                res <- waitAnyCatchCancel [cwt, sgt, pt, et]
+                handleErrors res
   where
     handleErrors (_, (Left e)) = logTime $ "Failed with exception: " ++ show e
     handleErrors _ = logTime "Unexpected return value"
