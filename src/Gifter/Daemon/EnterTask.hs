@@ -85,7 +85,8 @@ enterAction = do
     dc <- getDataChannel
     ge <- liftIO . atomically $ readTChan dc
     sg <- getsIntState (^.steamGames)
-    if matchAny ge sg Nothing (cfg^.enter) && not (isAlreadyOwned sg ge)
+    cap <- getValue `fmap` getsIntState (^.currentAccPoints)
+    if matchAny ge sg (Just $ cap) (cfg^.enter) && not (isAlreadyOwned sg ge)
         then let maxR = fromIntegral $ cfg^.maxRetries
              in retryN_ maxR $ tryGetGiveawayInfo ge
         else return ()
